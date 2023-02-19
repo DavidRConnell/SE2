@@ -1,2 +1,4 @@
 profile_results/
 tests/cache/
+mex/tests
+*.o
