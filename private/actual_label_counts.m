@@ -38,11 +38,11 @@ function [labelID_x_nodes labels_unq comm_size]=actual_label_counts(ADJ,current_
 % end
 
 if length(varargin)==1
-    
+
     ignore_nodes=varargin{1};
     new_largest_label=max(current_listener_history)+1;
     current_listener_history(ignore_nodes)=new_largest_label;
-    
+
 end
 
 current_listener_history=current_listener_history(:);
@@ -76,15 +76,14 @@ if exist('ignore_nodes')
    running_sum(end,:)=[];
    labels_unq(end)=[];
    comm_size(end)=[];
-   
+
 end
 % %we can do that becaue node identifiers are numbers sequentially starting at 1
 % %in each row of "nodes_by_labels_all_times" we tick off positions (using a 1) where that label occurs in the full list of labels
 
     if options.memory_efficient==1       %weird this is working faster even on full matrices
-  
-        labelID_x_nodes=running_sum*ADJ;     
+
+        labelID_x_nodes=running_sum*ADJ;
     else%
         labelID_x_nodes=full(running_sum)*ADJ;
     end
-
