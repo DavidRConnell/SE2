@@ -39,3 +39,6 @@ if IC_type==1
 elseif IC_type==2
     IC_store=randperm(length(ADJ));
 end
+
+end
+

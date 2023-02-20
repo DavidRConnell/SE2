@@ -253,5 +253,5 @@ if options.multicommunity>1
     else
         save([options.filename '_multicom_nodes_all.mat'], 'multicom_nodes_all')
     end
-
+end
 end
