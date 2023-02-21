@@ -1,22 +1,85 @@
-%%This is the suggested fuction through which to interact with SpeakEasy2
-%clustering.  You can run SpeakEasy without setting any parameters, or
-%control exactly how it functions, using the parameters below, which
-%control how the algorithm is applied, but not how it operates.
+function [varargout]=SpeakEasy2(ADJ,varargin)
+%SPEAKEASY2 Community detection algorithm
+%   You can run SpeakEasy without setting any parameters, or control exactly
+%   how it functions, using the parameters below, which control how the
+%   algorithm is applied, but not how it operates.
 %
-%Description of outputs:
-% varargout{1} - "partition_tags{x}" is a two column matrix with node ID's in the first column and numeric label ID's in the 2nd, {x} refers to subcuster level
-% varargout{2} - "partition_cells{x}" is a sequence of cells, each containing a list of nodes in a given cluster.  The clusters are ordered in size.
-% varargout{3} - "convenient_order" lists nodes in conveneint order for visualizing clusters  - i.e.as a quick check that clusters are plausible, try running: imagesc(ADJ(convenient_node_ordering{1},convenient_node_ordering{1})
-% varargout{4} - list of multi-community nodes
-
-%Example uses
-% >> SpeakEasy2(rand(30)); % just to verify it runs
-% >> load ADJdemo
-% >> [partition  partition_cell_version  convenient_node_order]=SpeakEasy2(ADJ);  %output results to workspace
-% >> SpeakEasy2(ADJ,'subcluster',2)  %clustering primary clusters again
-% >> SpeakEasy2(ADJ,'maxthreads',3)  %three independent threads - requires parallel toolbox
-
-function [varargout]=SpeakEasy2(ADJ,varargin); %#ok<NCOMMA>
+%   Algorithm produces INDEPENDENT_RUNS x TARGET_PARTITION partitions then
+%   selects the partition that is most similar to all other partitions based on
+%   NMI.
+%
+%   SPEAKEASY2(ADJ) Run SpeakEasy2 on adjacency matrix ADJ, saving the results
+%   to FILENAME (default 'SpeakEasy2_results'). ADJ can be full or sparse,
+%   weighted or unweighted, directed or undirected.
+%
+%   PARTITION = SPEAKEASY2(ADJ) Return resulting partition, in two column list
+%   format with node IDs in first column and label IDs in the second, to
+%   PARTITION.
+%
+%   [PARTITION, PARTITION_CELLS, CONVENIENT_ORDER] = SPEAKEASY2(ADJ)
+%   PARTITION_CELLS returns cells of nodes for each cluster order by size of
+%   the cluster and CONVENIENT_ORDER sorts nodes in an order useful for
+%   visualizing clusters. Clusters can be visualized with:
+%       >> imagesc((convenient_node_ordering{1},convenient_node_ordering{1}))
+%
+%   [P, CELLS, ORDER, MULTI_COMMUNITY_NODES] = SPEAKEASY2(ADJ)
+%   MULTI_COMMUNITY_NODES provides a list of all nodes in multiple
+%   communities. See MULTICOMMUNITY parameter.
+%
+%   [...] = SPEAKEASY2(..., 'PARAM1', VAL1, 'PARAM2', VAL2, ...) specifies
+%   additional parameters and their values.  Valid parameters are the
+%   following:
+%
+%       Algorithm parameters
+%       Parameter             Value
+%        'independent_runs'   '10' (default) number of independent runs to
+%                             perform. Each run get's its own set off initial
+%                             conditions.
+%        'subcluster'         '1' (default) depth of clustering. Sub-cluster
+%                             primary clusters if > 1.
+%        'multicommunity'     '1' (default) max number of communities a node
+%                             can be a member of. Find crisp partitions if 1,
+%                             fuzzy if > 1.
+%        'target_partitions'  '5' (default) Number of partitions to find per
+%                             independent run. Total partitions is
+%                             target_partitions * independent runs.
+%        'target_clusters'    Expected number of clusters to find.
+%        'minclust'           '5' (defualt) Smallest cluster size for
+%                             subclustering. Don't attempt to subcluster a
+%                             cluster that is smaller than this.
+%        'discard_transient'  '3' (default) how many initial partitions to
+%                             discard.
+%
+%      Performance parameters
+%      Parameter            Value
+%        'memory_efficient'  'true' (default) whether to favor memory (true)
+%                            or performance (false). Specific to full ADJ.
+%        'random_seed'       Seed to use for reproducing results.
+%        'autoshutdown'      'true' (default) whether to shutdown the parpool.
+%                            If not using parallel processing, ignored. Setting
+%                            to false can improve performance if batch running
+%                            SpeakEasy2 on many networks.
+%        'max_threads'       Number of threads to use. Defaults to system
+%                            max - 1. If not using parallel processing, ignored.
+%
+%      User parameters
+%      Parameter            Value
+%        'filename'          'SpeakEasy2_results' (default) filename to save
+%                            the results to if called without output arguments.
+%        'verbose'           'false' (default) Display additional information
+%                            about the run.
+%        'graphics'          'false' (default) Create graphics.
+%        'node_confidence    'false' (default).
+%
+%   Example uses
+%     >> SpeakEasy2(rand(30)); % just to verify it runs
+%     >> load ADJdemo
+%     >> % output results to workspace
+%     >> [partition partition_cell_version convenient_node_order]=SpeakEasy2(ADJ);
+%     >> % clustering primary clusters again
+%     >> SpeakEasy2(ADJ,'subcluster',2)
+%     >> % three independent threads - requires parallel toolbox
+%     >> SpeakEasy2(ADJ,'maxthreads',3)
 
 %%Settings.  In this section change how SE2 is applied, but not its fundamental behavior.
 %The most likely inputs to be adjusted are at the top.
@@ -25,26 +88,26 @@ options.CaseSensitive = false;
 
 %settings related to how many times SpeekEasy is applied
 addOptional(options,'filename','SpeakEasy2_results')
-addOptional(options,'independent_runs',10);   %number of completely independent initial conditions (IC's) - may need to reduce this if that same number of copies of the ADJ do not fit in memory
-addOptional(options,'subcluster',1);           %if you want to sub-cluster your primary clusters, make this 2+
-addOptional(options,'multicommunity',1)  %rename after testing... should be equal to max number of communities per node (so will be 2 or greater if you want overlapping output
+addOptional(options,'independent_runs',10);
+addOptional(options,'subcluster',1);
+addOptional(options,'multicommunity',1)
 addOptional(options,'target_partitions',5);
-addOptional(options,'target_clusters',max([min([10 length(ADJ)]) round(length(ADJ)/100)]));  %if you enable bubbling and run long enough this doesn't matter
+addOptional(options,'target_clusters',max([min([10 length(ADJ)]) round(length(ADJ)/100)]));
 
 %core and probably don't need to ever change, as these are generally arbitrary, fast and accurate
-addOptional(options,'minclust',5);         %min size for sub-clustering (i.e. if cluster is already this small, do NOT further subcluster) just matke this more than 3 as suits your purose, but
-addOptional(options,'discard_transient',3)  %disregard the first few solutions that are not at equilibrium
+addOptional(options,'minclust',5);
+addOptional(options,'discard_transient',3)
 
 %these merely affect how we do the clustering, but not the result
-addOptional(options,'memory_efficient',1); %setting to zero may improve sped on full matrices that fit in memory
-addOptional(options,'random_seed',[]);   %for repro
-addOptional(options,'autoshutdown',1); %shutsdown parpool unless you set to 0 - which yiou might want to do if doing a bunch of runs on mulitple networks
-addOptional(options,'max_threads',feature('numcores') - 1); %limit the number of threads to use
+addOptional(options,'memory_efficient',true,@islogical);
+addOptional(options,'random_seed',[]);
+addOptional(options,'autoshutdown',true,@islogical);
+addOptional(options,'max_threads',feature('numcores') - 1);
 
 %for extra output
-addOptional(options,'verbose',0);
-addOptional(options,'graphics',0);
-addOptional(options,'node_confidence',0);
+addOptional(options,'verbose',false,@islogical);
+addOptional(options,'graphics',false,@islogical);
+addOptional(options,'node_confidence',false,@islogical);
 
 %% Parse arguments
 parse(options,varargin{:});
@@ -186,7 +249,7 @@ for main_iter=1:options.subcluster   %main loop over clustering / subclustering
     partition_tags{main_iter}=sortrows(partition_tags{main_iter});
 end
 
-if parallel_enabled && options.autoshutdown==1
+if parallel_enabled && options.autoshutdown
     delete(gcp('nocreate'))
 end
 

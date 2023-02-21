@@ -6,7 +6,7 @@
 %"accept_multi" higher values are more stringent criterion for overlapping clusters, 1==disjoint clusters
 %secondary_labels_scores
 
-function [nodes_and_partition_identifiers_disjoint nodes_and_partition_identifiers_overlapping cell_partition cell_partition_overlapping multicom_nodes_all median_of_all_ARI]=select_representative_partition_old(ADJ,partitions, main_iter, secondary_labels_scores, secondary_labels_ID, subset_nodes_for_NMI,options)
+function [nodes_and_partition_identifiers_disjoint nodes_and_partition_identifiers_overlapping cell_partition cell_partition_overlapping multicom_nodes_all median_of_all_ARI]=select_representative_partition(ADJ,partitions, main_iter, secondary_labels_scores, secondary_labels_ID, subset_nodes_for_NMI,options)
 
 %%first task is to compare all partitions and find representative one
 adjustedrand_pairwise=zeros(size(partitions,2));  %holds all possible adjusted rand index comparisons of partitions
@@ -81,7 +81,7 @@ winning_partition_memberIDs_unq=unique(partitions(:,most_similar_idx));
 if options.multicommunity>1
     %dimensions of secondary_labels_scores are [options.multicommunity x #nodesInADJ x options.target_partitions]
 
-    if options.graphics==1
+    if options.graphics
         figure
         imagesc (secondary_labels_scores(:,:,1))
         xlabel('nodes')
@@ -95,7 +95,7 @@ if options.multicommunity>1
     secondary_labels_scores=sum(secondary_labels_scores,3);  %the final row of this has the scores for the top (discrete) communities (not overlapping)
     secondary_labels_scores=secondary_labels_scores./ repmat( secondary_labels_scores(end,:),size(secondary_labels_scores,1),1 );  %we compare suboptimal scores normalized to the top score for each node
 
-    if options.graphics==1
+    if options.graphics
         figure
         plot(sort( secondary_labels_scores(end-1,:) ))
         ylabel('sorted ratio of 2nd best to best')
@@ -104,7 +104,7 @@ if options.multicommunity>1
     secondary_labels_scores=    secondary_labels_scores(end-options.multicommunity+1:end-1,:);  %trim  off last row which holds the discrete solutions
     secondary_labels_ID_winning=secondary_labels_ID    (end-options.multicommunity+1:end-1,:,most_similar_idx);
 
-    if options.graphics==1
+    if options.graphics
         figure
         imagesc(secondary_labels_scores)
         title('secondary_labels_scores')

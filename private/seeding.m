@@ -31,7 +31,7 @@ if IC_type==1
         if main_iter==1
         disp(['produced about ' num2str(length(unique(IC_store(1,:)))) ' seed labels, while goal was ' num2str(options.target_clusters) ])
 
-        if options.verbose==1
+        if options.verbose
            disp('finished IC gen')
         end
         end
@@ -41,4 +41,3 @@ elseif IC_type==2
 end
 
 end
-

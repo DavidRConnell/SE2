@@ -75,10 +75,10 @@ end
 % %we can do that becaue node identifiers are numbers sequentially starting at 1
 % %in each row of "nodes_by_labels_all_times" we tick off positions (using a 1) where that label occurs in the full list of labels
 
-    if options.memory_efficient==1       %weird this is working faster even on full matrices
-
+    if options.memory_efficient       %weird this is working faster even on full matrices
         labelID_x_nodes=running_sum*ADJ;
     else%
         labelID_x_nodes=full(running_sum)*ADJ;
     end
+
 end
