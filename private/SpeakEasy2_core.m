@@ -16,17 +16,14 @@
 function [partitionID, secondary_labels_scores, secondary_labels_ID, max_labels_output]=SpeakEasy2_core(ADJ,IC_store_relevant,main_iter,kin,options)
 
 %set up labels and storage of labels for each node
-listener_history=zeros(timesteps,length(ADJ));  %each column is history represents a single node, and each row is a timestep
-listener_history(1,:)=IC_store_relevant;  %load up random initial conditions
-score_history=zeros(timesteps,length(ADJ));  %each column is history represents a single node, and each row is a timestep
+working_partition = IC_store_relevant;
+previous_partition = IC_store_relevant;
+partition_store = zeros(options.target_partitions, length(ADJ));
+n_saved = 0;
 
 %prep to record bubbling and fusing - just tracking - doesn't affect operation
-bubble_history=[1 zeros(1,size(listener_history,1))];  %later on this will hold a 1 when bubbling occured
-merge_history= [1 zeros(1,size(listener_history,1))];  %later on this will hold a 1 when fusion occures
-
-% prep storage for solutions
-preintervention_state=[];
-postintervention_state=[];
+last_bubble = inf;
+last_merge = inf;
 
 %switches that track bubbling
 max_labels_this_bubbling_sesion=[]; %always initialize to empty matrix - will determine when to stop bubbling phase
@@ -40,55 +37,35 @@ possible_cut=[]; %intialize empty,  holds a variable set dynamically for "do_fus
 switch_to_fusion_mode=0;  %always initialize to zero - this toggles behavior between meta clustering or splitting
 
 %if you have enabled overlapping clusters with options.multicommunity>1
-if options.multicommunity>1
-    secondary_labels_scores=zeros(options.multicommunity,length(ADJ),options.target_partitions +options.discard_transient );
-    secondary_labels_ID=    zeros(options.multicommunity,length(ADJ),options.target_partitions +options.discard_transient ); %todel
+if options.multicommunity > 1
+    secondary_labels_scores = zeros(options.multicommunity, ...
+                                    length(ADJ), ...
+                                    options.target_partitions + options.discard_transient);
+    secondary_labels_ID = zeros(options.multicommunity, ...
+                                length(ADJ),options.target_partitions + options.discard_transient);
     subop_tracker=1;
-
 else  %disjoint clustering
     secondary_labels_ID=[];
     secondary_labels_scores=[];
 end
 
 %useful for figures  - could ultimately be removed as long as you also delete refs to these
-number_of_labels=[];    %for each time point counts #unique lables
 median_cluster_size=[]; %for each time point counts medians size of all clusters
-mean_cluster_size=[];
 max_labels_output=[];  %for figure
-adjustedrand_all_time=zeros(1,timesteps);  %only used diagnostically if an official solution variable 'official' is loaded
-nmi_all_time=zeros(1,timesteps);
-
-%useful for figures - stats on evolving solutions
-number_of_labels=[];    %for each time point counts #unique lables
-median_cluster_size=[]; %for each time point counts medians size of all clusters
-
-
 
 i=1; %counter for main loop, which continues until generating the target_paritions # of solution states ( aka partitions)
-while size(postintervention_state,1) < (options.target_partitions +options.discard_transient )%&&post_peak_split_counter<=  %main label updating loop
-%    tic;
-
+while n_saved < (options.target_partitions + options.discard_transient)
     i=i+1;
-    listener_history(i,:)=listener_history(i-1,:);  %most labesl in listener_history(i,:) will be updated
+    last_bubble = last_bubble + 1;
+    last_merge = last_merge + 1;
+    previous_partition = working_partition;
     nodes_to_update=1:length(ADJ);  %these next four lines select a unique set of nodes that will be updated at this timestsep
     to_ignore_frac=.1;   %  this is the randomly selected fraction of nodes that are not updated .5 to .1 all work about as well on LFR, but the more you ignore, the longer it takes to complete
     nodes_to_ignore=randperm(length(ADJ),ceil(to_ignore_frac*length(ADJ)));
     nodes_to_update(nodes_to_ignore)=[];
 
-
-    if size(listener_history,1)-i<300  %we don't know total run time, so keep adding preallocation chunks
-        listener_history=cat(1,listener_history,zeros(1000,size(listener_history,2)));
-        bubble_history=cat(2, bubble_history, zeros(1,1000));
-        merge_history= cat(2, merge_history,  zeros(1,1000));
-    end
-
-
-    if i>0
-        labels_unq=unique(listener_history(i,:));
-        number_of_labels(end+1)=length(labels_unq);
-        %evaluting stability of labels, so need some time to pass - specific value not very important, just a few timesteps, can even be zero
-        % cluster_stability_measure(i)=(number_of_labels(i-1)-number_of_labels(i))/number_of_labels(i); %stability comparison between points as close as i and i-2 works
-    end
+    labels_unq=unique(working_partition);
+    %evaluting stability of labels, so need some time to pass - specific value not very important, just a few timesteps, can even be zero
 
     %determine which of four things to do at each timestep
     if i<=20   %just do typical updating at first few steps... value could be 5+ doesn't really matter
@@ -108,14 +85,14 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
         if switch_to_fusion_mode==0  %i.e. do bubbling or nurture because you're NOT merging/fusing
 
             %don't bubble too soon after merging       and  wait a bit since any prior bubbling
-            if i-max(find(merge_history==1))>2   &&   i-max(find(bubble_history==1))>=15   %bubbling
+            if last_merge > 2 && last_bubble >= 15   %bubbling
                 do_bubbling=1;
                 do_fusion=0;
                 do_typical=0;
                 do_nurture=0;
                 record_mode(i)=1;
 
-            elseif    i-max(find(merge_history==1))>=2   &&  i-max(find(bubble_history==1))<=4    %nurture-style updating
+            elseif last_merge >= 2 && last_bubble <=4    %nurture-style updating
                 do_bubbling=0;
                 do_fusion=0;
                 do_typical=0;
@@ -123,7 +100,7 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
                 record_mode(i)=2;
             end
 
-        elseif    switch_to_fusion_mode==1    &&  i-max(find(merge_history==1))>=2   &&  i-max(find(bubble_history==1))>3% %fusion - cluster-level merging
+        elseif switch_to_fusion_mode == 1 && last_merge >= 2 && last_bubble > 3% %fusion - cluster-level merging
             do_bubbling=0;
             do_fusion=1;
             do_typical=0;
@@ -154,14 +131,13 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
     if do_typical==1
 
         %"actual_counts" contains have signed number of total receipts of each label, so if you have 5 positive incoming connections from label #2, and 4 negative inputs for label#2, actual_counts of label #2 will ==1
-        [actual_counts active_labels]=actual_label_counts(ADJ,listener_history(i-1,:),options); %actual_counts is sparse for sparse input
+        [actual_counts, active_labels]=actual_label_counts(ADJ,previous_partition,options); %actual_counts is sparse for sparse input
         expected_counts=expected_label_counts(actual_counts,kin,0);%seems was set to 1 for lfr testing %set param ==1 for fullADJ increases speed... pretty much makes sense   %last parameter ==0  means expected ONLY for labels received by a given node (faster than providing expected values for all labels, including ones a node never hears)
         actual_minus_expected=(actual_counts-expected_counts);
         [best_actual_minus_expected_score idx_best_label]=max(actual_minus_expected,[],1);
-        listener_history(i,nodes_to_update)= active_labels(idx_best_label(nodes_to_update));  %non-updated nodes retain prior labels (listener_history(i,:) set to listener_history(i-1,:) higher up in fx)
-        score_history(i,nodes_to_update)=best_actual_minus_expected_score(nodes_to_update);
+        working_partition(nodes_to_update)= active_labels(idx_best_label(nodes_to_update));  %non-updated nodes retain prior labels (listener_history(i,:) set to listener_history(i-1,:) higher up in fx)
 
-        [active_labels actual_minus_expected]=adjust_for_ignored_labels(listener_history(i,:),active_labels,actual_minus_expected);  %this line matters a lot
+        [active_labels, actual_minus_expected]=adjust_for_ignored_labels(working_partition,active_labels,actual_minus_expected);  %this line matters a lot
         %Explaination of why the line above and the "adjust_for_ignored_labels" function matters a lot:
         %Reason #1: we generate updated labels for all nodes, but we only apply some
         %of them, selected by 'to_update_pseudo'. That means some labels may carry over from the previous timestep but never appear in
@@ -220,15 +196,14 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
         %actual_label_counts and you get an empty return and errors
 
         kin_limited_alt=kin-sum(ADJ(high_fit_nodes_all,:));
-        [actual_counts active_labels]=actual_label_counts(ADJ,listener_history(i-1,:),options,high_fit_nodes_all); %actual_counts is sparse for sparse input
+        [actual_counts, active_labels]=actual_label_counts(ADJ,working_partition,options,high_fit_nodes_all); %actual_counts is sparse for sparse input
         expected_counts=expected_label_counts(actual_counts,kin_limited_alt,0);%seems was set to 1 for lfr testing %set param ==1 for fullADJ increases speed... pretty much makes sense   %last parameter ==0  means expected ONLY for labels received by a given node (faster than providing expected values for all labels, including ones a node never hears)
         actual_minus_expected=(actual_counts-expected_counts);
-        [best_actual_minus_expected_score idx_best_label]=max(actual_minus_expected,[],1);
-        listener_history(i,nodes_to_update)= active_labels(idx_best_label(nodes_to_update));
-        score_history(i,nodes_to_update)=best_actual_minus_expected_score(nodes_to_update);
+        [best_actual_minus_expected_score, idx_best_label]=max(actual_minus_expected,[],1);
+        working_partition(nodes_to_update)= active_labels(idx_best_label(nodes_to_update));
 
-        listener_history(i,high_fit_nodes_all)=listener_history(i-1,high_fit_nodes_all);   %we DO NOT take updated labels for high_fit_nodes_all aka nodes with strong label selection
-        [active_labels actual_minus_expected]=adjust_for_ignored_labels(listener_history(i,:),active_labels,actual_minus_expected);  %this line matters a lot fore reasons stated in paragraph in do_typical
+        working_partition(high_fit_nodes_all)=previous_partition(high_fit_nodes_all);   %we DO NOT take updated labels for high_fit_nodes_all aka nodes with strong label selection
+        [active_labels, actual_minus_expected]=adjust_for_ignored_labels(working_partition,active_labels,actual_minus_expected);  %this line matters a lot fore reasons stated in paragraph in do_typical
 
     end
 
@@ -248,16 +223,15 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
         low_fit_nodes_all=[];
 
         i=i+1; %increment "i" because we're artificially (via bubbling) creating next set of labels
-        listener_history(i,:)=listener_history(i-1,:);  %most of these will be updated, but ome will not, so just have them continue from prior timestep
-        bubble_history(i)=1; %used in determining what mode to go into
+        previous_partition=working_partition;  %most of these will be updated, but ome will not, so just have them continue from prior timestep
+        last_merge = last_merge + 1;
+        last_bubble = 0;
 
         splits_per_phase_history(end+1)=splits_per_phase_history(end)+1;  %not used - just for visualization - record how many times we bubble during each bubbling phase
-        number_of_labels(end+1)=length(labels_unq);
-        preintervention_state(end+1,:)=listener_history(i,:);
 
-        [label_unq_loc todel]=    splitlist(listener_history(i,:));
+        label_unq_loc = splitlist(working_partition);
         median_cluster_size(end+1)=median(cellfun(@length,label_unq_loc));  % NOT just diagnostic - used to determine how much to split big clusters
-        prior_biggest_label=max(listener_history(i,:));
+        prior_biggest_label=max(working_partition);
 
         percentile_marker_bubble=sort(best_actual_minus_expected_score);  %we get best_actual_minus_expected_score from when it is computed in do_nuture stage
         percentile_cut_point_bubble=.9;  %if value is ==.9 we're going to select nodes in the lowes 90% of maxval_values and split them into new clusters
@@ -272,14 +246,14 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
 
                 if length(low_fit_nodes)>0
 
-                    split_labels_to_insert=randi(prior_biggest_label+[1   max(2,  min([10 ceil([ length(label_unq_loc{k})/median_cluster_size(end)]) ])   )] , length(low_fit_nodes)  , 1 );
-                    listener_history(i,low_fit_nodes)=split_labels_to_insert;
+                    split_labels_to_insert=randi(prior_biggest_label+[1 max(2, min([10 ceil([ length(label_unq_loc{k})/median_cluster_size(end)]) ])   )] , length(low_fit_nodes) , 1);
+                    working_partition(low_fit_nodes)=split_labels_to_insert;
                     prior_biggest_label=max(split_labels_to_insert); % want to insert new labels bigger than this
                 end
             end
         end
 
-        max_labels_this_bubbling_sesion(end+1)=length(unique(listener_history(i,:)));  %working with the #labels a few time steps after bubbling might be more logical, but this acts siilarly and is easier to read
+        max_labels_this_bubbling_sesion(end+1)=length(unique(working_partition));  %working with the #labels a few time steps after bubbling might be more logical, but this acts siilarly and is easier to read
 
         %if statements below determine if we should stop bubling
         if splitting_has_peaked_state==0
@@ -300,7 +274,6 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
         end
 
         possible_cut_this_round=[];
-
     end  %end bubbling
 
 
@@ -315,23 +288,23 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
     if do_fusion==1
 
         i=i+1;% increment i because we're going to record down merged labels as the next row in listener_history, without updating ID's in  the usual way
-        number_of_labels(end+1)=length(labels_unq);
-        merge_history(i)=1;  % used in decisions about which mode to go into
-        listener_history(i,:)=listener_history(i-1,:);  %most of these will be updated, but this fills in non-updated nodes
+        last_bubble = last_bubble + 1;
+        last_merge = 0;
+        previous_partition=working_partition;  %most of these will be updated, but this fills in non-updated nodes
         splits_per_phase_history(end)=0;   %reset split counter for next time in do_bubblinig
         post_peak_split_counter=0; %reset to zero but don't use in this section - used in bubbling
         splitting_has_peaked_state=0;
         max_labels_this_bubbling_sesion=[];
 
-        [actual_counts active_labels]=actual_label_counts(ADJ,listener_history(i,:),options); %actual_counts is sparse for sparse input
+        [actual_counts, active_labels]=actual_label_counts(ADJ,working_partition,options); %actual_counts is sparse for sparse input
         expected_counts=expected_label_counts(actual_counts,kin,0); %set to zero experimentally for large network   %last parameter ==1  means compute expected for all labels, not just labels received, which (may?) matter in do_fusion phase
-        actual_by_group_compare=[actual_label_counts(actual_counts',listener_history(i,:),options)]';
+        actual_by_group_compare=[actual_label_counts(actual_counts',working_partition,options)]';
         expected_by_group_compare=expected_label_counts(actual_by_group_compare,sum(actual_by_group_compare),0);%note last param=0 is the low ram version
 
         actual_minus_expected_group=actual_by_group_compare-expected_by_group_compare;
         actual_minus_expected_group_diag=diag(actual_minus_expected_group);
         actual_minus_expected_group(1:length(actual_minus_expected_group)+1:numel(actual_minus_expected_group))=-Inf;    %diagonal contains within label connections, which are not relevant to merging
-        [merge_target_val merge_target_idx]=max(actual_minus_expected_group,[],1);  %get the best non-self community
+        [merge_target_val, merge_target_idx]=max(actual_minus_expected_group,[],1);  %get the best non-self community
         %the "keyvals" matrix below is holding stats that determine which clusters will be merged
         keyvals=sortrows([merge_target_val(:) merge_target_idx(:) [1:length(merge_target_val)]' actual_minus_expected_group_diag(merge_target_idx(:))  actual_minus_expected_group_diag],-1  );  %ranks labels  with most overlap
         %col2 of keyvals is the idx of best merge partner
@@ -339,7 +312,7 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
 
 
 
-        [label_idx_in_cells  listener_history(i,:) active_labels] =splitlist(listener_history(i,:));   %bucket_labels
+        [label_idx_in_cells  working_partition active_labels] =splitlist(working_partition);   %bucket_labels
         label_number_at_time=cellfun(@length, label_idx_in_cells);
         label_number_at_time_for_certain_nodes_time0=label_number_at_time(keyvals(:,2));
         label_number_at_time_for_certain_nodes_timeplus=label_number_at_time(keyvals(:,3));
@@ -357,17 +330,19 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
         if length(to_merge)==0  || (length(possible_cut)~=1 && .5*possible_cut(end-1)<=possible_cut(end)) %   ||         to_merge_length_record*1.0<length(to_merge);  %this will be true when there are no cluster overlaps greater than expected, which will happen after we've previously merged for a while
             %  to_merge_length_record=length(ADJ);
             switch_to_fusion_mode=0;  %stop merging/fusing
-            postintervention_state(end+1,:)=listener_history(i,:);  %record the
-
+            n_saved = n_saved + 1;
+            if n_saved > options.discard_transient
+                partition_store(n_saved - options.discard_transient, :) = ...
+                    working_partition;
+            end
 
             if options.multicommunity>1   %store some suboptimal labels
-                [temp_label_scores  temp_label_ID] =sort(actual_minus_expected,1);
+                [temp_label_scores, temp_label_ID] =sort(actual_minus_expected,1);
                 possible_multicom_labels=min([options.multicommunity size(temp_label_scores,1)])-1;
                 secondary_labels_scores(end-possible_multicom_labels :end,:,subop_tracker)=      temp_label_scores(end-possible_multicom_labels :end,:);
                 secondary_labels_ID    (end-possible_multicom_labels :end,:,subop_tracker)=active_labels(temp_label_ID(end-possible_multicom_labels :end,:));
                 subop_tracker=subop_tracker+1;
             end
-
         else
             % to_merge_length_record=length(to_merge);
             cond1=find(min([label_number_at_time_for_certain_nodes_time0(:) label_number_at_time_for_certain_nodes_timeplus(:)],2)>=2); %idea is to only merge labels with larger number of members
@@ -376,41 +351,34 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
             indices_to_check_for_potential_merging=intersect(cond1,cond2);  %will see if the labels at these indices have ben previously merged - only try to merge once per label
 
             for k=1:length(indices_to_check_for_potential_merging)
-                if (been_merged(keyvals(indices_to_check_for_potential_merging(k),2:3)))==[ 0 0]
+                if (been_merged(keyvals(indices_to_check_for_potential_merging(k),2:3)))==[0 0]
 
                     merge_pairs(end+1,:)=keyvals(indices_to_check_for_potential_merging(k),2:3);
-                    listener_history(i,label_idx_in_cells{active_labels(merge_pairs(end,1))})    =active_labels(merge_pairs(end,2));  %merge labels under the label of the first ID of the pir
-
+                    working_partition(label_idx_in_cells{active_labels(merge_pairs(end,1))})    =active_labels(merge_pairs(end,2));  %merge labels under the label of the first ID of the pir
                     been_merged(keyvals(indices_to_check_for_potential_merging(k),[2,3]))=1;
                 end
             end
 
-
-
             if sum(been_merged)==0  %this will be true when there is nothing permissible to merge
-
                 switch_to_fusion_mode=0; %set this to zero exit this fusion mode
-                postintervention_state(end+1,:)=listener_history(i,:);  %record the final state
-
+                n_saved = n_saved + 1;
+                if n_saved > options.discard_transient
+                    partition_store(n_saved - options.discard_transient, :) = ...
+                        working_partition;
+                end
 
                 if options.multicommunity>1   %store some suboptimal labels
-                    [ temp_label_scores  temp_label_ID] =sort(actual_minus_expected,1);
-
+                    [temp_label_scores, temp_label_ID] =sort(actual_minus_expected,1);
                     possible_multicom_labels=min([options.multicommunity size(temp_label_scores,1)])-1;
                     secondary_labels_scores(end-possible_multicom_labels :end,:,subop_tracker)=      temp_label_scores(end-possible_multicom_labels :end,:);
-                    secondary_labels_ID    (end-possible_multicom_labels :end,:,subop_tracker)=active_labels(temp_label_ID(end-possible_multicom_labels :end,:));
-
+                    secondary_labels_ID(end-possible_multicom_labels :end,:,subop_tracker)=active_labels(temp_label_ID(end-possible_multicom_labels :end,:));
                     subop_tracker=subop_tracker+1;
                 end
             end
         end
-
     end  %conditions for fusion
-
-
-   % timer(i)=toc;
-
 end %end main while loop
+
 used_timesteps=i;
 dofig=0;
 if dofig==1
@@ -430,22 +398,20 @@ figure
 end
 
 %trim off initial solutions
-postintervention_state(1:options.discard_transient,:)=[];
 max_labels_output(1:options.discard_transient)=[];
 if options.multicommunity>1
     secondary_labels_scores(:,:,1:options.discard_transient)=[];
     secondary_labels_ID(:,:,1:options.discard_transient)=[];
 end
 
-partitionID=zeros(size(postintervention_state)); %for all clusters, get their locations in the partitions and their numeric identifier
+partitionID=zeros(size(partition_store)); %for all clusters, get their locations in the partitions and their numeric identifier
 if options.multicommunity>1
-    for j=1:size(postintervention_state,1)
-        [todel partitionID(j,:) todel2 secondary_labels_ID(:,:,j) ] =splitlist(postintervention_state(j,:),secondary_labels_ID(:,:,j));
+    for j=1:size(partition_store,1)
+        [~, partitionID(j,:), ~, secondary_labels_ID(:,:,j)] =splitlist(partition_store(j,:),secondary_labels_ID(:,:,j));
     end
-
 else
-    for j=1:size(postintervention_state,1)
-        [todel, partitionID(j,:)  ] =splitlist(postintervention_state(j,:));
+    for j=1:size(partition_store,1)
+        [~, partitionID(j,:)] =splitlist(partition_store(j,:));
     end
 end
 
