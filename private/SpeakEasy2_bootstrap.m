@@ -31,7 +31,6 @@ parfor(i=1:options.independent_runs,options.max_threads)  %this is the main loop
     rng(i,'twister')
     end
 
-   % if options.subcluster==1
     if main_iter==1
         disp(' ')
         disp(['starting independent run #' num2str(i) ' of ' num2str(options.independent_runs)])

@@ -13,13 +13,12 @@
 % of nodes, which makes the indexing for counting up labels and assigning them to nodes a pain
 
 
-function [partitionID secondary_labels_scores  secondary_labels_ID  max_labels_output ]=SpeakEasy2_core(ADJ,IC_store_relevant,main_iter,kin,ktot,options,varargin)
-
+function [partitionID, secondary_labels_scores, secondary_labels_ID, max_labels_output]=SpeakEasy2_core(ADJ,IC_store_relevant,main_iter,kin,options)
 
 %set up labels and storage of labels for each node
-listener_history=zeros(options.timesteps,length(ADJ));  %each column is history represents a single node, and each row is a timestep
+listener_history=zeros(timesteps,length(ADJ));  %each column is history represents a single node, and each row is a timestep
 listener_history(1,:)=IC_store_relevant;  %load up random initial conditions
-score_history=zeros(options.timesteps,length(ADJ));  %each column is history represents a single node, and each row is a timestep
+score_history=zeros(timesteps,length(ADJ));  %each column is history represents a single node, and each row is a timestep
 
 %prep to record bubbling and fusing - just tracking - doesn't affect operation
 bubble_history=[1 zeros(1,size(listener_history,1))];  %later on this will hold a 1 when bubbling occured
@@ -56,8 +55,8 @@ number_of_labels=[];    %for each time point counts #unique lables
 median_cluster_size=[]; %for each time point counts medians size of all clusters
 mean_cluster_size=[];
 max_labels_output=[];  %for figure
-adjustedrand_all_time=zeros(1,options.timesteps);  %only used diagnostically if an official solution variable 'official' is loaded
-nmi_all_time=zeros(1,options.timesteps);
+adjustedrand_all_time=zeros(1,timesteps);  %only used diagnostically if an official solution variable 'official' is loaded
+nmi_all_time=zeros(1,timesteps);
 
 %useful for figures - stats on evolving solutions
 number_of_labels=[];    %for each time point counts #unique lables
@@ -452,4 +451,3 @@ else
 end
 
 end
-

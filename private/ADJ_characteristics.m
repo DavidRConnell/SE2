@@ -6,7 +6,7 @@
 %Outputs:
 %is_ADJ_weighted==1 for case when entries are not entirely 0 or 1
 %force_efficient==1 if matrix is larger than max_ADJ_size or if it is smaller than max_ADJ_size and low density
-function [ADJ is_ADJ_weighted is_ADJ_symmetric]=ADJcharacteristics(ADJ, ADJsum)
+function [ADJ is_ADJ_weighted is_ADJ_symmetric]=ADJ_characteristics(ADJ)
 
 smallest_val=min(min(ADJ));
 max_all_ADJ=max(max(ADJ));
