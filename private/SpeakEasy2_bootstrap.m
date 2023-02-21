@@ -36,7 +36,7 @@ parfor(i=1:options.independent_runs,options.max_threads)  %this is the main loop
         disp(['starting independent run #' num2str(i) ' of ' num2str(options.independent_runs)])
     end
 
-    [partitionID secondary_labels_scores secondary_labels_ID max_labels_output ]=SpeakEasy2_core(ADJ,IC_store(i,:),main_iter,kin,ktot,options);
+    [partitionID secondary_labels_scores secondary_labels_ID max_labels_output ]=SpeakEasy2_core(ADJ,IC_store(i,:),main_iter,kin,options);
     partitionID_store{i,1}=partitionID; %parfor isn't happy unless this is filled seprately like this as opposed to direct funtion output
     secondary_labels_scores_in_cells{i,1}=secondary_labels_scores;
     secondary_labels_ID_in_cells{i,1}=secondary_labels_ID;

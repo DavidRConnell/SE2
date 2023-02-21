@@ -131,7 +131,6 @@ while size(postintervention_state,1) < (options.target_partitions +options.disca
             record_mode(i)=3;
         end
 
-
         if  sum([do_bubbling do_fusion do_nurture])==0;   %if not merging or bubbling, just do typical
             do_bubbling=0;
             do_fusion=0;
