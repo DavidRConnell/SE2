@@ -1,5 +1,6 @@
-#include "se_random.h"
 #include <igraph_random.h>
+
+#include "se2_random.h"
 
 /* Initializes default igraph random number generator to use twister method */
 void se_rng_init(const int seed)

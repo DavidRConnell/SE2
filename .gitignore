@@ -1,4 +1,6 @@
 profile_results/
-tests/cache/
-mex/tests
+cache/
+lib/
+bin/
+*.mexa64
 *.o
