@@ -3,6 +3,7 @@ CFLAGS = -Wall -Wextra
 
 TOP_DIR = ../..
 INCLUDE_DIR = $(TOP_DIR)/include
+LIB_DIR = $(TOP_DIR)/lib
 SRC_DIR = $(TOP_DIR)/src
 
 memcheck: CFLAGS += -g -O0
@@ -11,10 +12,10 @@ debug: CFLAGS += -g3
 .PHONY: check clean debug memcheck
 
 test_bootstrap.o: test_bootstrap.c $(INCLUDE_DIR)/speak_easy_2.h
-	$(CC) -c $*.c -I$(INCLUDE_DIR) -fopenmp
+	$(CC) $(CFLAGS) -fopenmp -c -I$(INCLUDE_DIR) $*.c
 
-test_bootstrap: test_bootstrap.o
-	$(CC) $(CFLAGS) test_bootstrap.o $(SRC_DIR)/se2_core.o -o $@ -fopenmp -ligraph -lm
+test_bootstrap: test_bootstrap.o $(LIB_DIR)/libse2.a
+	$(CC) $(CFLAGS) -fopenmp -o $@ $^ -L$(LIB_DIR) -lse2 -ligraph -lm
 
 check: test_bootstrap
 	./test_bootstrap

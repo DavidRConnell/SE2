@@ -5,24 +5,30 @@ INCLUDE_DIR = ../include
 LIB_DIR = ../lib
 
 # TODO: Change to if statements to detect OS
-LIB_EXT = so
+LIB_EXT = a
 
 debug: CFLAGS += -g3
 
-.PHONY: all objs libse2 clean
+.PHONY: all libse2 clean
 
 all: libse2
 libse2: $(LIB_DIR)/libse2.$(LIB_EXT)
-objs: se2_core.o
 
-$(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o
+$(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o
 	@[ -d $(LIB_DIR) ] || mkdir $(LIB_DIR)
-	$(CC) -shared -o $@ $^ -fopenmp
+	ar rcs $@ $^
 
-se2_core.o: se2_core.c $(INCLUDE_DIR)/speak_easy_2.h
-	$(CC) -c $*.c -I$(INCLUDE_DIR) -fopenmp
+se2_core.o: se2_core.c se2_random.h se2_seeding.h $(INCLUDE_DIR)/speak_easy_2.h
+	$(CC) $(CFLAGS) -c -fopenmp -I$(INCLUDE_DIR) $*.c
 
-debug: objs libse2
+se2_random.o: se2_random.c se2_random.h
+	$(CC) $(CFLAGS) -c $*.c
+
+se2_seeding.o: se2_seeding.c se2_seeding.h se2_random.h $(INCLUDE_DIR)/speak_easy_2.h
+	$(CC) $(CFLAGS) -c -I$(INCLUDE_DIR) $*.c
+
+debug: libse2
 
 clean:
 	-rm *.o
+	-rm -r $(LIB_DIR)
