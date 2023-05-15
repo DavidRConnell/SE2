@@ -4,3 +4,6 @@ lib/
 bin/
 *.mexa64
 *.o
+tests/c/*
+!tests/c/*.c
+!tests/c/Makefile
