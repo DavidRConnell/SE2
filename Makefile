@@ -11,13 +11,10 @@ all: mex
 lib:
 	@cd $(SRC_DIR); $(MAKE) libse2
 
-objs:
-	@cd $(SRC_DIR); $(MAKE) objs
-
 mex: lib
 	@cd $(MEX_DIR); $(MAKE) all
 
-check: objs
+check: lib
 	@cd $(TEST_DIR); $(MAKE) check
 
 debug:
