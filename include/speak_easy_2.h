@@ -24,6 +24,6 @@ typedef struct {
 } options;
 
 int speak_easy_2(igraph_t *graph, igraph_vector_t const *weights,
-                 igraph_bool_t const directed, options *opts, outputs *res);
+                 options *opts, outputs *res);
 
 #endif

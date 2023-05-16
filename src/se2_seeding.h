@@ -6,7 +6,7 @@
 #include "speak_easy_2.h"
 
 size_t se2_seeding(igraph_t const *graph, igraph_vector_t const *weights,
-                   igraph_bool_t const directed, igraph_vector_t const *kin, options const *opts,
+                   igraph_vector_t const *kin, options const *opts,
                    igraph_vector_int_t *ic_store);
 
 #endif

@@ -35,8 +35,7 @@ static void se2_core(igraph_t const *graph,
 }
 
 static void se2_bootstrap(igraph_t *graph, igraph_vector_t const *weights,
-                          igraph_bool_t const directed, size_t const subcluster_iter,
-                          options const *opts, outputs *res)
+                          size_t const subcluster_iter, options const *opts, outputs *res)
 {
   igraph_integer_t n_nodes = igraph_vcount(graph);
   igraph_vector_t kin;
@@ -65,8 +64,7 @@ static void se2_bootstrap(igraph_t *graph, igraph_vector_t const *weights,
     igraph_vector_int_init(&ic_store, n_nodes);
 
     se2_rng_init(run_i + opts->random_seed);
-    size_t n_unique = se2_seeding(graph, weights, directed, &kin, opts,
-                                  &ic_store);
+    size_t n_unique = se2_seeding(graph, weights, &kin, opts, &ic_store);
     igraph_vector_int_list_set(&partition_store, partition_offset, &ic_store);
 
     if ((!subcluster_iter) && (run_i == 0)) {
@@ -122,12 +120,12 @@ static void se2_set_defaults(options *opts)
 }
 
 int speak_easy_2(igraph_t *graph, igraph_vector_t const *weights,
-                 igraph_bool_t const directed, options *opts, outputs *res)
+                 options *opts, outputs *res)
 {
   printf("\ncalling main routine at level 1\n");
   se2_set_defaults(opts);
 
-  se2_bootstrap(graph, weights, directed, 0, opts, res);
+  se2_bootstrap(graph, weights, 0, opts, res);
 
   if (opts->node_confidence) {
     // pass;
