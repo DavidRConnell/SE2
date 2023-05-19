@@ -8,9 +8,10 @@
 #include "se2_modes.h"
 
 #define SE2_SET_OPTION(opts, field, default) \
-    (opts->field) = (opts->field) ? (opts->field) : (default)
+    (opts->field) = (opts)->field ? (opts)->field : (default)
 
 static void se2_core(igraph_t const *graph,
+                     igraph_vector_t const *weights,
                      igraph_vector_int_list_t *partition_list,
                      igraph_integer_t const partition_offset,
                      igraph_vector_t const kin, options const *opts)
@@ -22,9 +23,9 @@ static void se2_core(igraph_t const *graph,
 
   igraph_integer_t partition_idx = partition_offset;
   for (igraph_integer_t time = 0; !se2_do_terminate(tracker); time++) {
-    se2_run_mode(graph, working_partition, tracker, time);
+    se2_mode_run_step(graph, weights, working_partition, tracker, time);
     if (se2_do_save_partition(tracker)) {
-      se2_store_partition(working_partition, partition_list, partition_idx);
+      se2_partition_store(working_partition, partition_list, partition_idx);
       partition_idx++;
     }
   }
@@ -78,7 +79,7 @@ static void se2_bootstrap(igraph_t *graph, igraph_vector_t const *weights,
              opts->independent_runs);
     }
 
-    se2_core(graph, &partition_store, partition_offset, kin, opts);
+    se2_core(graph, weights, &partition_store, partition_offset, kin, opts);
   }
 
   /* se2_most_representative_partition(partitions); */

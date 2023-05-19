@@ -1,18 +1,24 @@
+#include <igraph.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <igraph.h>
+#include <string.h>
 
 #include "speak_easy_2.h"
 
+
 int main()
 {
+  char *graph_name = "lesmis.gml";
+  char graph_path[1000] = "../examples/";
   igraph_t graph;
   options opts = {
     .random_seed = 1,
-    .independent_runs = 10,
+    .independent_runs = 1, // TODO: Change later.
   };
   outputs res;
-  FILE *fptr = fopen("../examples/karate.gml", "r");
+
+  strncat(graph_path, graph_name, 999);
+  FILE *fptr = fopen(graph_path, "r");
 
   igraph_read_graph_gml(&graph, fptr);
 

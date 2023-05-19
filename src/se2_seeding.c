@@ -39,7 +39,7 @@ size_t se2_seeding(igraph_t const *graph, igraph_vector_t const *weights,
 
   igraph_vector_int_init(&unique_labels, opts->target_clusters);
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
-    VECTOR(*ic_store)[i] = (i % opts->target_clusters) + 1;
+    VECTOR(*ic_store)[i] = i % opts->target_clusters;
   }
   se2_randperm(ic_store, n_nodes, n_nodes);
 
@@ -52,9 +52,9 @@ size_t se2_seeding(igraph_t const *graph, igraph_vector_t const *weights,
     label = VECTOR(*ic_store)[i];
     biggest_label = label > biggest_label ? label : biggest_label;
 
-    if (VECTOR(unique_labels)[label - 1] == 0) {
+    if (VECTOR(unique_labels)[label] == 0) {
       n_unique++;
-      VECTOR(unique_labels)[label - 1] = 1;
+      VECTOR(unique_labels)[label] = 1;
     }
   }
 
