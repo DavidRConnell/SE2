@@ -9,6 +9,10 @@ LIB_EXT = a
 
 debug: CFLAGS += -g3
 
+ifdef SE2_PRINT_PATH
+CFLAGS += -DSE2_PRINT_PATH=$(SE2_PRINT_PATH)
+endif
+
 .PHONY: all libse2 clean
 
 all: libse2

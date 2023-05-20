@@ -7,6 +7,10 @@
 #include "se2_random.h"
 #include "se2_modes.h"
 
+#ifdef SE2_PRINT_PATH
+#include "se2_print.h"
+#endif
+
 #define SE2_SET_OPTION(opts, field, default) \
     (opts->field) = (opts)->field ? (opts)->field : (default)
 
@@ -21,6 +25,11 @@ static void se2_core(igraph_t const *graph,
                                   partition_offset);
   se2_partition *working_partition = se2_partition_init(graph, ic_store);
 
+#ifdef SE2_PRINT_PATH
+  printf("Printing results to file\n\n");
+  se2_print_setup(graph, working_partition);
+#endif
+
   igraph_integer_t partition_idx = partition_offset;
   for (igraph_integer_t time = 0; !se2_do_terminate(tracker); time++) {
     se2_mode_run_step(graph, weights, working_partition, tracker, time);
@@ -28,6 +37,9 @@ static void se2_core(igraph_t const *graph,
       se2_partition_store(working_partition, partition_list, partition_idx);
       partition_idx++;
     }
+#ifdef SE2_PRINT_PATH
+    se2_print_step(working_partition, time + 1, se2_tracker_mode(tracker));
+#endif
   }
 
   se2_tracker_destroy(tracker);
@@ -125,6 +137,10 @@ int speak_easy_2(igraph_t *graph, igraph_vector_t const *weights,
 {
   printf("\ncalling main routine at level 1\n");
   se2_set_defaults(opts);
+
+#ifdef SE2_PRINT_PATH
+  opts->independent_runs = 1;
+#endif
 
   se2_bootstrap(graph, weights, 0, opts, res);
 

@@ -55,6 +55,11 @@ void se2_tracker_destroy(se2_tracker *tracker)
   free(tracker);
 }
 
+igraph_integer_t se2_tracker_mode(se2_tracker const *tracker)
+{
+  return tracker->mode;
+}
+
 igraph_bool_t se2_do_terminate(se2_tracker *tracker)
 {
   // TODO Temporary early termination
