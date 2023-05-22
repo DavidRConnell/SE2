@@ -25,12 +25,12 @@ static igraph_integer_t se2_detect_labels(igraph_vector_int_t *labels,
   igraph_integer_t n_labels = 0;
   igraph_integer_t n_nodes = igraph_vector_int_size(labels);
 
-  igraph_vector_bool_resize(mask, max_label);
+  igraph_vector_bool_resize(mask, max_label + 1);
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
     VECTOR(*mask)[VECTOR(*labels)[i]] = true;
   }
 
-  for (igraph_integer_t i = 0; i < max_label; i++) {
+  for (igraph_integer_t i = 0; i <= max_label; i++) {
     n_labels += VECTOR(*mask)[i];
   }
 
@@ -269,7 +269,7 @@ static void se2_partition_update_label_mask(se2_partition *partition)
 {
   partition->n_labels = se2_detect_labels(partition->reference,
                                           partition->label_mask);
-  partition->max_label = igraph_vector_bool_size(partition->label_mask);
+  partition->max_label = igraph_vector_bool_size(partition->label_mask) - 1;
 }
 
 void se2_partition_commit_changes(se2_partition *partition)
