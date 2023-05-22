@@ -1,5 +1,6 @@
 #include <igraph_structural.h>
 #include "se2_label.h"
+#include "se2_random.h"
 
 // Proportion of a labels to consider unstable for nurturing step
 #define FRACTION_UNSTABLE_LABELS 0.9
@@ -11,9 +12,11 @@ static inline void num_neighbors_expected(igraph_t const *graph,
   igraph_vector_t kout;
   igraph_integer_t n_nodes = igraph_vcount(graph);
   igraph_integer_t acc = 0;
+
   igraph_vector_init(&kout, n_nodes);
   igraph_strength(graph, &kout, igraph_vss_all(), IGRAPH_OUT, IGRAPH_NO_LOOPS,
                   weights);
+
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
     VECTOR(*labels_heard)[LABEL(*partition)[i]] += VECTOR(kout)[i];
   }
@@ -95,7 +98,12 @@ void se2_find_most_specific_labels(igraph_t const *graph,
     while ((label_id = se2_next_label(partition)) != -1) {
       label_specificity = VECTOR(local_labels_heard)[label_id] -
                           (node_kin * VECTOR(global_label_proportions)[label_id]);
-      if ((best_label == -1) || (label_specificity > best_label_specificity)) {
+      if ((best_label == -1) || (label_specificity >= best_label_specificity)) {
+        // Otherwise favors smaller labels in a tie.
+        if ((label_specificity == best_label_specificity) && (RNG_INTEGER(0, 1))) {
+          continue;
+        }
+
         best_label_specificity = label_specificity;
         best_label = label_id;
       }
