@@ -1,11 +1,7 @@
 #include <igraph_structural.h>
 #include "se2_label.h"
-#include "se2_random.h"
 
-// Proportion of a labels to consider unstable for nurturing step
-#define FRACTION_UNSTABLE_LABELS 0.9
-
-static inline void num_neighbors_expected(igraph_t const *graph,
+static inline void global_label_proportions(igraph_t const *graph,
     igraph_vector_t const *weights, se2_partition const *partition,
     igraph_vector_t *labels_heard, igraph_integer_t const n_labels)
 {
@@ -44,10 +40,10 @@ static inline igraph_real_t edge_get_weight(igraph_t const *graph,
   return VECTOR(*weights)[eid];
 }
 
-static inline void num_neighbors_observed(igraph_t const *graph,
+static inline void local_label_proportions(igraph_t const *graph,
     igraph_vector_t const *weights, se2_partition const *partition,
     igraph_integer_t const node_id, igraph_vector_t *labels_heard,
-    igraph_integer_t const n_labels, igraph_real_t *kin)
+    igraph_real_t *kin, igraph_integer_t n_labels)
 {
   igraph_vector_int_t neighbors;
   igraph_integer_t n_neighbors;
@@ -74,36 +70,33 @@ static inline void num_neighbors_observed(igraph_t const *graph,
 /* Scores labels based on the difference between the local and global
  frequencies.  Labels that are overrepresented locally are likely to be of
  importance in tagging a node. */
-void se2_find_most_specific_labels(igraph_t const *graph,
-                                   igraph_vector_t const *weights,
-                                   se2_partition *partition)
+static void se2_find_most_specific_labels_i(igraph_t const *graph,
+    igraph_vector_t const *weights,
+    se2_partition *partition,
+    se2_iterator *node_iter)
 {
   igraph_integer_t max_label = se2_partition_max_label(partition);
-  igraph_vector_t global_label_proportions;
-  igraph_vector_t local_labels_heard;
+  igraph_vector_t labels_expected;
+  igraph_vector_t labels_observed;
+  se2_iterator *label_iter = se2_iterator_random_label_init(partition, false);
   igraph_real_t node_kin = 0;
   igraph_real_t label_specificity = 0, best_label_specificity = 0;
   igraph_integer_t best_label = -1;
+
+  igraph_vector_init(&labels_expected, max_label + 1);
+  igraph_vector_init(&labels_observed, max_label + 1);
+
+  global_label_proportions(graph, weights, partition, &labels_expected,
+                           max_label + 1);
+
   igraph_integer_t node_id = 0, label_id = 0;
-
-  igraph_vector_init(&global_label_proportions, max_label + 1);
-  igraph_vector_init(&local_labels_heard, max_label + 1);
-
-  num_neighbors_expected(graph, weights, partition, &global_label_proportions,
-                         max_label);
-
-  while ((node_id = se2_next_node(partition)) != -1) {
-    num_neighbors_observed(graph, weights, partition, node_id,
-                           &local_labels_heard, max_label, &node_kin);
-    while ((label_id = se2_next_label(partition)) != -1) {
-      label_specificity = VECTOR(local_labels_heard)[label_id] -
-                          (node_kin * VECTOR(global_label_proportions)[label_id]);
+  while ((node_id = se2_iterator_next(node_iter)) != -1) {
+    local_label_proportions(graph, weights, partition, node_id,
+                            &labels_observed, &node_kin, max_label + 1);
+    while ((label_id = se2_iterator_next(label_iter)) != -1) {
+      label_specificity = VECTOR(labels_observed)[label_id] -
+                          (node_kin * VECTOR(labels_expected)[label_id]);
       if ((best_label == -1) || (label_specificity >= best_label_specificity)) {
-        // Otherwise favors smaller labels in a tie.
-        if ((label_specificity == best_label_specificity) && (RNG_INTEGER(0, 1))) {
-          continue;
-        }
-
         best_label_specificity = label_specificity;
         best_label = label_id;
       }
@@ -111,11 +104,22 @@ void se2_find_most_specific_labels(igraph_t const *graph,
     se2_partition_add_to_stage(partition, node_id, best_label,
                                best_label_specificity);
     best_label = -1;
+    se2_iterator_shuffle(label_iter);
   }
   se2_partition_commit_changes(partition);
 
-  igraph_vector_destroy(&global_label_proportions);
-  igraph_vector_destroy(&local_labels_heard);
+  se2_iterator_destroy(label_iter);
+  igraph_vector_destroy(&labels_expected);
+  igraph_vector_destroy(&labels_observed);
 }
 
-void find_unstable_nodes();
+void se2_find_most_specific_labels(igraph_t const *graph,
+                                   igraph_vector_t const *weights,
+                                   se2_partition *partition,
+                                   igraph_real_t const fraction_nodes_to_label)
+{
+  se2_iterator *node_iter = se2_iterator_random_node_init(partition,
+                            fraction_nodes_to_label);
+  se2_find_most_specific_labels_i(graph, weights, partition, node_iter);
+  se2_iterator_destroy(node_iter);
+}

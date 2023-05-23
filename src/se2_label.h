@@ -5,7 +5,7 @@
 
 void se2_find_most_specific_labels(igraph_t const *graph,
                                    igraph_vector_t const *weights,
-                                   se2_partition *partition);
-void find_unstable_nodes();
+                                   se2_partition *partition,
+                                   igraph_real_t const fraction_nodes_to_label);
 
 #endif

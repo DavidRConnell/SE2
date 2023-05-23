@@ -37,7 +37,7 @@ se2_modes.o: se2_modes.c se2_modes.h se2_label.h se2_partitions.h \
 	     $(INCLUDE_DIR)/speak_easy_2.h
 	$(CC) $(CFLAGS) -c -I$(INCLUDE_DIR) $*.c
 
-se2_label.o: se2_label.c se2_label.h se2_partitions.h se2_random.h
+se2_label.o: se2_label.c se2_label.h se2_partitions.h
 	$(CC) $(CFLAGS) -c $*.c
 
 se2_partitions.o: se2_partitions.c se2_partitions.h se2_random.h
