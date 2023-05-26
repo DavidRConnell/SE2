@@ -12,21 +12,21 @@ struct se2_iterator {
   igraph_bool_t owns_ids;
 };
 
-static igraph_integer_t se2_detect_labels(igraph_vector_int_t *membership,
-    igraph_vector_bool_t *mask)
+static igraph_integer_t se2_count_labels(igraph_vector_int_t *membership,
+    igraph_vector_int_t *community_sizes)
 {
   igraph_integer_t max_label = igraph_vector_int_max(membership);
   igraph_integer_t n_labels = 0;
   igraph_integer_t n_nodes = igraph_vector_int_size(membership);
 
-  igraph_vector_bool_resize(mask, max_label + 1);
-  igraph_vector_bool_null(mask);
+  igraph_vector_int_resize(community_sizes, max_label + 1);
+  igraph_vector_int_null(community_sizes);
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
-    VECTOR(*mask)[VECTOR(*membership)[i]] = true;
+    VECTOR(*community_sizes)[VECTOR(*membership)[i]]++;
   }
 
   for (igraph_integer_t i = 0; i <= max_label; i++) {
-    n_labels += VECTOR(*mask)[i];
+    n_labels += VECTOR(*community_sizes)[i] > 0;
   }
 
   return n_labels;
@@ -39,22 +39,22 @@ se2_partition *se2_partition_init(igraph_t const *graph,
   igraph_integer_t n_nodes = igraph_vcount(graph);
   igraph_vector_t *specificity = malloc(sizeof(*specificity));
   igraph_vector_int_t *stage = malloc(sizeof(*specificity));
-  igraph_vector_bool_t *label_mask = malloc(sizeof(*label_mask));
+  igraph_vector_int_t *community_sizes = malloc(sizeof(*community_sizes));
   igraph_integer_t n_labels = 0;
 
   igraph_vector_init(specificity, n_nodes);
   igraph_vector_int_init(stage, n_nodes);
-  igraph_vector_bool_init(label_mask, 0);
-  n_labels = se2_detect_labels(initial_labels, label_mask);
+  igraph_vector_int_init(community_sizes, 0);
+  n_labels = se2_count_labels(initial_labels, community_sizes);
 
   se2_partition new_partition = {
     .n_nodes = n_nodes,
     .reference = initial_labels,
     .stage = stage,
     .label_quality = specificity,
-    .label_mask = label_mask,
+    .community_sizes = community_sizes,
     .n_labels = n_labels,
-    .max_label = igraph_vector_bool_size(label_mask) - 1,
+    .max_label = igraph_vector_int_size(community_sizes) - 1,
   };
 
   memcpy(partition, &new_partition, sizeof(new_partition));
@@ -65,10 +65,10 @@ void se2_partition_destroy(se2_partition *partition)
 {
   igraph_vector_int_destroy(partition->stage);
   igraph_vector_destroy(partition->label_quality);
-  igraph_vector_bool_destroy(partition->label_mask);
+  igraph_vector_int_destroy(partition->community_sizes);
   free(partition->stage);
   free(partition->label_quality);
-  free(partition->label_mask);
+  free(partition->community_sizes);
   free(partition);
 }
 
@@ -135,7 +135,7 @@ se2_iterator *se2_iterator_random_label_init(se2_partition const *partition,
 
   igraph_vector_int_init(labels, n_total);
   for (igraph_integer_t i = 0, j = 0; i < n_total; j++) {
-    if (VECTOR(*(partition->label_mask))[j]) {
+    if (VECTOR(*(partition->community_sizes))[j] > 0) {
       VECTOR(*labels)[i] = j;
       i++;
     }
@@ -259,16 +259,18 @@ void se2_partition_add_to_stage(se2_partition *partition,
 }
 
 // Return an unused label.
-static igraph_integer_t se2_new_label(se2_partition *partition)
+igraph_integer_t se2_partition_new_label(se2_partition *partition)
 {
-  igraph_integer_t mask_length = igraph_vector_bool_size(partition->label_mask);
+  igraph_integer_t pool_size = igraph_vector_int_size(
+                                 partition->community_sizes);
   igraph_integer_t next_label = 0;
-  while ((partition->label_mask) && (next_label < mask_length)) {
+  while ((VECTOR(*partition->community_sizes)[next_label]) &&
+         (next_label < pool_size)) {
     next_label++;
   }
 
-  if (next_label == mask_length) {
-    igraph_vector_bool_resize(partition->label_mask, 2 * mask_length);
+  if (next_label == pool_size) {
+    igraph_vector_int_resize(partition->community_sizes, pool_size + 1);
   }
 
   if (next_label > partition->max_label) {
@@ -277,32 +279,82 @@ static igraph_integer_t se2_new_label(se2_partition *partition)
 
   partition->n_labels++;
 
+  // Mark new label as reserved.
+  VECTOR(*partition->community_sizes)[next_label] = -1;
+
   return next_label;
-}
-
-static inline igraph_integer_t se2_partition_community_size(
-  se2_partition const *partition, igraph_integer_t const label)
-{
-  igraph_integer_t sz = 0;
-  for (igraph_integer_t i = 0; i < partition->n_nodes; i++) {
-    sz += VECTOR(*partition->reference)[i] == label;
-  }
-
-  return sz;
 }
 
 static inline void se2_partition_free_label(se2_partition *partition,
     igraph_integer_t const label)
 {
-  VECTOR(*partition->label_mask)[label] = false;
+  VECTOR(*partition->community_sizes)[label] = 0;
   if (label == partition->max_label) {
-    while ((!VECTOR(*partition->label_mask)[partition->max_label]) &&
+    while ((!VECTOR(*partition->community_sizes)[partition->max_label]) &&
            (partition->max_label > 0)) {
       partition->max_label--;
     }
   }
 
   partition->n_labels--;
+}
+
+igraph_integer_t se2_partition_community_size(se2_partition const *partition,
+    igraph_integer_t const label)
+{
+  return VECTOR(*partition->community_sizes)[label];
+}
+
+static igraph_integer_t se2_partition_median_community_size_i(
+  se2_partition const *partition, igraph_vector_t const *community_sizes,
+  igraph_vector_int_t *ids, igraph_integer_t const k)
+{
+  for (igraph_integer_t i = 0; i < partition->n_labels; i++) {
+    VECTOR(*ids)[i] = i;
+  }
+
+  k_smallest_i(community_sizes, partition->n_labels, ids, k);
+  return (igraph_integer_t)VECTOR(*community_sizes)[VECTOR(*ids)[k - 1]];
+}
+
+igraph_integer_t se2_partition_median_community_size(se2_partition const
+    *partition)
+{
+  if (partition->n_labels == 1) {
+    return partition->n_nodes;
+  }
+
+  igraph_vector_int_t ids;
+  // Use floats instead of integer to reuse k_smallest_i function.
+  igraph_vector_t community_sizes;
+  igraph_integer_t k = partition->n_labels / 2;
+  se2_iterator *label_iter = se2_iterator_random_label_init(partition, 0);
+  igraph_integer_t res = 0;
+
+  igraph_vector_init(&community_sizes, partition->n_labels);
+  igraph_vector_int_init(&ids, partition->max_label + 1);
+
+  igraph_integer_t label_id;
+  igraph_integer_t label_i = 0;
+  while ((label_id = se2_iterator_next(label_iter)) != -1) {
+    VECTOR(community_sizes)[label_i] =
+      (igraph_real_t)se2_partition_community_size(partition, label_id);
+    label_i++;
+  }
+
+  res = se2_partition_median_community_size_i(
+          partition, &community_sizes, &ids, k);
+
+  if ((partition->n_labels % 2) == 0) {
+    res += se2_partition_median_community_size_i(
+             partition, &community_sizes, &ids, k + 1);
+    res /= 2;
+  }
+
+  igraph_vector_destroy(&community_sizes);
+  igraph_vector_int_destroy(&ids);
+
+  return res;
 }
 
 void se2_partition_merge_labels(se2_partition *partition, igraph_integer_t c1,
@@ -329,7 +381,7 @@ void se2_partition_merge_labels(se2_partition *partition, igraph_integer_t c1,
 void se2_partition_relabel_mask(se2_partition *partition,
                                 igraph_vector_bool_t const *mask)
 {
-  igraph_integer_t label = se2_new_label(partition);
+  igraph_integer_t label = se2_partition_new_label(partition);
   for (igraph_integer_t i = 0; i < partition->n_nodes; i++) {
     if (VECTOR(*mask)[i]) {
       VECTOR(*partition->stage)[i] = label;
@@ -337,17 +389,18 @@ void se2_partition_relabel_mask(se2_partition *partition,
   }
 }
 
-static void se2_partition_update_label_mask(se2_partition *partition)
+static void se2_partition_recount_community_sizes(se2_partition *partition)
 {
-  partition->n_labels = se2_detect_labels(partition->reference,
-                                          partition->label_mask);
-  partition->max_label = igraph_vector_bool_size(partition->label_mask) - 1;
+  partition->n_labels = se2_count_labels(partition->reference,
+                                         partition->community_sizes);
+  partition->max_label = igraph_vector_int_size(partition->community_sizes) -
+                         1;
 }
 
 void se2_partition_commit_changes(se2_partition *partition)
 {
   igraph_vector_int_update(partition->reference, partition->stage);
-  se2_partition_update_label_mask(partition);
+  se2_partition_recount_community_sizes(partition);
 }
 
 /* Save the state of the current working partition's committed changes to the

@@ -6,6 +6,7 @@
 
 // LABEL(partition)[node_id] gets the reference label for the node.
 #define LABEL(partition) (VECTOR(*(partition).reference))
+#define RELABEL(partition) (VECTOR(*(partition).stage))
 
 /* WARNING: Expose fields only so macros can be used for performance.  Ideally,
 treated as opaque.
@@ -20,7 +21,7 @@ typedef struct se2_partition {
   igraph_vector_t *label_quality;       // Label quality for stage.
   igraph_integer_t n_nodes;
   igraph_integer_t n_labels;
-  igraph_vector_bool_t *label_mask;     // Mask of which labels are in use.
+  igraph_vector_int_t *community_sizes;
   igraph_integer_t max_label;
 } se2_partition;
 
@@ -51,6 +52,11 @@ void se2_iterator_destroy(se2_iterator *iterator);
 igraph_integer_t se2_partition_n_nodes(se2_partition const *partition);
 igraph_integer_t se2_partition_n_labels(se2_partition const *partition);
 igraph_integer_t se2_partition_max_label(se2_partition const *partition);
+igraph_integer_t se2_partition_new_label(se2_partition *partition);
+igraph_integer_t se2_partition_community_size(se2_partition const *partition,
+    igraph_integer_t const label);
+igraph_integer_t se2_partition_median_community_size(se2_partition const
+    *partition);
 
 void se2_partition_merge_labels(se2_partition *partition, igraph_integer_t c1,
                                 igraph_integer_t c2);

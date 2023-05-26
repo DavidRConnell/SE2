@@ -6,6 +6,7 @@
 
 #define FRACTION_UNSTABLE_LABELS 0.9
 #define FRACTION_NODES_TO_UPDATE 0.9
+#define SMALLEST_COMMUNITY_TO_BUBBLE 5
 
 typedef enum {
   SE2_TYPICAL = 0,
@@ -145,10 +146,11 @@ static void se2_typical_mode(igraph_t const *graph,
                                 FRACTION_NODES_TO_UPDATE);
 }
 
-static void se2_bubble_mode(igraph_t const *graph, se2_partition *partition,
-                            se2_tracker *tracker)
+static void se2_bubble_mode(igraph_t const *graph, se2_partition *partition)
 {
   puts("bubble_mode");
+  se2_burst_large_communities(graph, partition, FRACTION_UNSTABLE_LABELS,
+                              SMALLEST_COMMUNITY_TO_BUBBLE);
 }
 
 static void se2_merge_mode(igraph_t const *graph, se2_partition *partition,
@@ -176,7 +178,7 @@ void se2_mode_run_step(igraph_t const *graph, igraph_vector_t const *weights,
     se2_typical_mode(graph, weights, partition);
     break;
   case SE2_BUBBLE:
-    se2_bubble_mode(graph, weights, partition);
+    se2_bubble_mode(graph, partition);
     break;
   case SE2_MERGE:
     se2_merge_mode(graph, weights, partition);

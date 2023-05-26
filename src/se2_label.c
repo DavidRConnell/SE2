@@ -1,4 +1,5 @@
 #include <igraph_structural.h>
+#include <igraph_random.h>
 #include "se2_label.h"
 
 static inline void global_label_proportions(igraph_t const *graph,
@@ -136,4 +137,78 @@ void se2_relabel_worst_nodes(igraph_t const *graph,
 
   se2_find_most_specific_labels_i(graph, weights, partition, node_iter);
   se2_iterator_destroy(node_iter);
+}
+
+void se2_burst_large_communities(igraph_t const *graph,
+                                 se2_partition *partition,
+                                 igraph_real_t const fraction_nodes_to_move,
+                                 igraph_integer_t const min_community_size)
+{
+  se2_iterator *node_iter = se2_iterator_k_worst_fit_nodes_init(partition,
+                            igraph_vcount(graph) * fraction_nodes_to_move);
+  igraph_integer_t desired_community_size =
+    se2_partition_median_community_size(partition);
+  igraph_vector_int_t n_new_tags_cum;
+  igraph_vector_int_t n_nodes_to_move;
+  igraph_vector_int_t new_tags;
+  igraph_integer_t node_id;
+
+  igraph_vector_int_init(&n_new_tags_cum, partition->max_label + 2);
+  igraph_vector_int_init(&n_nodes_to_move, partition->max_label + 1);
+  while ((node_id = se2_iterator_next(node_iter)) != -1) {
+    if (se2_partition_community_size(partition, LABEL(*partition)[node_id]) >=
+        min_community_size) {
+      VECTOR(n_nodes_to_move)[LABEL(*partition)[node_id]]++;
+    }
+  }
+
+  igraph_integer_t n_new_tags;
+  for (igraph_integer_t i = 0; i <= partition->max_label; i++) {
+    if (VECTOR(n_nodes_to_move)[i] == 0) {
+      VECTOR(n_new_tags_cum)[i + 1] = VECTOR(n_new_tags_cum)[i];
+      continue;
+    }
+
+    n_new_tags = VECTOR(n_nodes_to_move)[i] / desired_community_size;
+    if (n_new_tags < 2) {
+      n_new_tags = 2;
+    } else if (n_new_tags > 10) {
+      n_new_tags = 10;
+    }
+
+    VECTOR(n_new_tags_cum)[i + 1] = n_new_tags;
+  }
+
+  for (igraph_integer_t i = 0; i <= partition->max_label; i++) {
+    if (VECTOR(n_nodes_to_move)[i] == 0) {
+      VECTOR(n_new_tags_cum)[i + 1] = VECTOR(n_new_tags_cum)[i];
+      continue;
+    }
+
+    VECTOR(n_new_tags_cum)[i + 1] += VECTOR(n_new_tags_cum)[i];
+  }
+
+  n_new_tags = VECTOR(n_new_tags_cum)[partition->max_label + 1];
+  igraph_vector_int_init(&new_tags, n_new_tags);
+  for (igraph_integer_t i = 0; i < n_new_tags; i++) {
+    VECTOR(new_tags)[i] = se2_partition_new_label(partition);
+  }
+
+  igraph_integer_t current_label;
+  while ((node_id = se2_iterator_next(node_iter)) != -1) {
+    current_label = LABEL(*partition)[node_id];
+    if (se2_partition_community_size(partition, current_label) >=
+        min_community_size) {
+      RELABEL(*partition)[node_id] =
+        VECTOR(new_tags)[RNG_INTEGER(VECTOR(n_new_tags_cum)[current_label],
+                                     VECTOR(n_new_tags_cum)[current_label + 1] - 1)];
+    }
+  }
+
+  igraph_vector_int_destroy(&new_tags);
+  igraph_vector_int_destroy(&n_nodes_to_move);
+  igraph_vector_int_destroy(&n_new_tags_cum);
+  se2_iterator_destroy(node_iter);
+
+  se2_partition_commit_changes(partition);
 }
