@@ -27,7 +27,12 @@ static void se2_core(igraph_t const *graph,
 
 #ifdef SE2_PRINT_PATH
   printf("Printing results to file\n\n");
-  se2_print_setup(graph, working_partition);
+  igraph_real_t modularity;
+  igraph_bool_t directed = igraph_is_directed(graph);
+  igraph_real_t resolution = 1;
+  igraph_modularity(graph, working_partition->reference, weights, resolution,
+                    directed, &modularity);
+  se2_print_setup(graph, working_partition, &modularity);
 #endif
 
   igraph_integer_t partition_idx = partition_offset;
@@ -38,7 +43,10 @@ static void se2_core(igraph_t const *graph,
       partition_idx++;
     }
 #ifdef SE2_PRINT_PATH
-    se2_print_step(working_partition, time + 1, se2_tracker_mode(tracker));
+    igraph_modularity(graph, working_partition->reference, weights, resolution,
+                      directed, &modularity);
+    se2_print_step(working_partition, time + 1, se2_tracker_mode(tracker),
+                   &modularity);
 #endif
   }
 
