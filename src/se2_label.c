@@ -123,3 +123,17 @@ void se2_find_most_specific_labels(igraph_t const *graph,
   se2_find_most_specific_labels_i(graph, weights, partition, node_iter);
   se2_iterator_destroy(node_iter);
 }
+
+void se2_relabel_worst_nodes(igraph_t const *graph,
+                             igraph_vector_t const *weights,
+                             se2_partition *partition,
+                             igraph_real_t const fraction_nodes_to_label)
+{
+  igraph_integer_t n_nodes = igraph_vcount(graph);
+  igraph_integer_t n_nodes_to_relabel = fraction_nodes_to_label * n_nodes;
+  se2_iterator *node_iter = se2_iterator_k_worst_fit_nodes_init(partition,
+                            n_nodes_to_relabel);
+
+  se2_find_most_specific_labels_i(graph, weights, partition, node_iter);
+  se2_iterator_destroy(node_iter);
+}

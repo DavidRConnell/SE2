@@ -33,11 +33,16 @@ void se2_partition_store(se2_partition const *working_partition,
                          igraph_vector_int_list_t *partition_store,
                          igraph_integer_t const index);
 
-se2_iterator *se2_iterator_random_node_init(se2_partition *partition,
-    igraph_real_t proportion);
-se2_iterator *se2_iterator_random_label_init(se2_partition *partition,
-    igraph_real_t proportion);
-se2_iterator *se2_iterator_from_vector(igraph_vector_int_t *ids);
+se2_iterator *se2_iterator_from_vector(igraph_vector_int_t *ids,
+                                       igraph_integer_t n_iter);
+se2_iterator *se2_iterator_random_node_init(se2_partition const *partition,
+    igraph_real_t const proportion);
+se2_iterator *se2_iterator_random_label_init(se2_partition const *partition,
+    igraph_real_t const proportion);
+se2_iterator *se2_iterator_k_worst_fit_nodes_init(se2_partition const
+    *partition,
+    igraph_integer_t const k);
+
 igraph_integer_t se2_iterator_next(se2_iterator *iterator);
 void se2_iterator_reset(se2_iterator *iterator);
 void se2_iterator_shuffle(se2_iterator *iterator);

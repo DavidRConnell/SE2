@@ -156,10 +156,13 @@ static void se2_merge_mode(igraph_t const *graph, se2_partition *partition,
 {
   puts("merge_mode");
 }
-static void se2_nurture_mode(igraph_t const *graph, se2_partition *partition,
-                             se2_tracker *tracker)
+
+static void se2_nurture_mode(igraph_t const *graph,
+                             igraph_vector_t const *weights,
+                             se2_partition *partition)
 {
   puts("nurture_mode");
+  se2_relabel_worst_nodes(graph, weights, partition, FRACTION_UNSTABLE_LABELS);
 }
 
 void se2_mode_run_step(igraph_t const *graph, igraph_vector_t const *weights,

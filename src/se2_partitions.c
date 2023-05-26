@@ -84,8 +84,27 @@ void se2_iterator_reset(se2_iterator *iterator)
   iterator->pos = 0;
 }
 
-se2_iterator *se2_iterator_random_node_init(se2_partition *partition,
-    igraph_real_t proportion)
+// WARNING: Iterator does not take ownership of the id vector so it must still
+// be cleaned up by the caller.
+se2_iterator *se2_iterator_from_vector(igraph_vector_int_t *ids,
+                                       igraph_integer_t const n_iter)
+{
+  igraph_integer_t n = igraph_vector_int_size(ids);
+  se2_iterator *iterator = malloc(sizeof(*iterator));
+  se2_iterator new_iterator = {
+    .ids = ids,
+    .n_total = n,
+    .n_iter = n_iter,
+    .pos = 0,
+    .owns_ids = false
+  };
+
+  memcpy(iterator, &new_iterator, sizeof(new_iterator));
+  return iterator;
+}
+
+se2_iterator *se2_iterator_random_node_init(se2_partition const *partition,
+    igraph_real_t const proportion)
 {
   igraph_integer_t n_total = partition->n_nodes;
   igraph_integer_t n_iter = n_total;
@@ -100,23 +119,15 @@ se2_iterator *se2_iterator_random_node_init(se2_partition *partition,
     n_iter = n_total * proportion;
   }
 
-  se2_iterator *iterator = malloc(sizeof(*iterator));
-  se2_iterator new_iterator = {
-    .ids = nodes,
-    .n_total = n_total,
-    .n_iter = n_iter,
-    .pos = 0,
-    .owns_ids = true
-  };
-
-  memcpy(iterator, &new_iterator, sizeof(new_iterator));
+  se2_iterator *iterator = se2_iterator_from_vector(nodes, n_iter);
+  iterator->owns_ids = true;
   se2_iterator_shuffle(iterator);
 
   return iterator;
 }
 
-se2_iterator *se2_iterator_random_label_init(se2_partition *partition,
-    igraph_real_t proportion)
+se2_iterator *se2_iterator_random_label_init(se2_partition const *partition,
+    igraph_real_t const proportion)
 {
   igraph_integer_t n_total = partition->n_labels;
   igraph_integer_t n_iter = n_total;
@@ -134,36 +145,69 @@ se2_iterator *se2_iterator_random_label_init(se2_partition *partition,
     n_iter = n_total * proportion;
   }
 
-  se2_iterator *iterator = malloc(sizeof(*iterator));
-  se2_iterator new_iterator = {
-    .ids = labels,
-    .n_total = n_total,
-    .n_iter = n_iter,
-    .pos = 0,
-    .owns_ids = true
-  };
-
-  memcpy(iterator, &new_iterator, sizeof(new_iterator));
+  se2_iterator *iterator = se2_iterator_from_vector(labels, n_iter);
+  iterator->owns_ids = true;
   se2_iterator_shuffle(iterator);
 
   return iterator;
 }
 
-// WARNING: Iterator does not take ownership of the id vector so it must still
-// be cleaned up by the caller.
-se2_iterator *se2_iterator_from_vector(igraph_vector_int_t *ids)
+static inline void k_smallest_swap_i(igraph_vector_int_t *idx,
+                                     igraph_integer_t const i,
+                                     igraph_integer_t j)
 {
-  igraph_integer_t n = igraph_vector_int_size(ids);
-  se2_iterator *iterator = malloc(sizeof(*iterator));
-  se2_iterator new_iterator = {
-    .ids = ids,
-    .n_total = n,
-    .n_iter = n,
-    .pos = 0,
-    .owns_ids = false
-  };
+  igraph_integer_t swap = VECTOR(*idx)[i];
+  VECTOR(*idx)[i] = VECTOR(*idx)[j];
+  VECTOR(*idx)[j] = swap;
+}
 
-  memcpy(iterator, &new_iterator, sizeof(new_iterator));
+static void k_smallest_i(igraph_vector_t const *arr,
+                         igraph_integer_t const n,
+                         igraph_vector_int_t *idx,
+                         igraph_integer_t const k)
+{
+  igraph_integer_t pivot = 0;
+  igraph_integer_t max = VECTOR(*arr)[pivot];
+
+  for (igraph_integer_t i = 0; i < k; i++) {
+    if (VECTOR(*arr)[i] > max) {
+      max = VECTOR(*arr)[i];
+      pivot = i;
+    }
+  }
+  k_smallest_swap_i(idx, k - 1, pivot);
+  pivot = k - 1;
+
+  for (igraph_integer_t i = k; i < n; i++) {
+    if (VECTOR(*arr)[VECTOR(*idx)[pivot]] > VECTOR(*arr)[VECTOR(*idx)[i]]) {
+      k_smallest_swap_i(idx, i, pivot);
+      pivot = i;
+    }
+  }
+
+  if (pivot != (k - 1)) {
+    k_smallest_i(arr, pivot, idx, k);
+  }
+}
+
+se2_iterator *se2_iterator_k_worst_fit_nodes_init(
+  se2_partition const *partition, igraph_integer_t const k)
+{
+  igraph_vector_int_t *ids = malloc(sizeof(*ids));
+
+  igraph_vector_int_init(ids, partition->n_nodes);
+  for (igraph_integer_t i = 0; i < partition->n_nodes; i++) {
+    VECTOR(*ids)[i] = i;
+  }
+
+  k_smallest_i(partition->label_quality, partition->n_nodes, ids, k);
+
+  igraph_vector_int_resize(ids, k);
+
+  se2_iterator *iterator = se2_iterator_from_vector(ids, k);
+  iterator->owns_ids = true;
+  se2_iterator_shuffle(iterator);
+
   return iterator;
 }
 
