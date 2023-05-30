@@ -15,7 +15,8 @@ int main()
     .random_seed = 1,
     .independent_runs = 1, // TODO: Change later.
   };
-  outputs res;
+  igraph_vector_int_t res;
+  igraph_vector_int_init(&res, 1);
 
   strncat(graph_path, graph_name, 999);
   FILE *fptr = fopen(graph_path, "r");
@@ -24,6 +25,7 @@ int main()
 
   speak_easy_2(&graph, NULL, &opts, &res);
 
+  igraph_vector_int_destroy(&res);
   igraph_destroy(&graph);
 
   return EXIT_SUCCESS;

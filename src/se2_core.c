@@ -1,5 +1,6 @@
 #include <igraph_error.h>
 #include <igraph_structural.h>
+#include <igraph_community.h>
 #include <omp.h>
 
 #include "speak_easy_2.h"
@@ -55,8 +56,57 @@ static void se2_core(igraph_t const *graph,
   return;
 }
 
-static void se2_bootstrap(igraph_t *graph, igraph_vector_t const *weights,
-                          size_t const subcluster_iter, options const *opts, outputs *res)
+static void se2_most_representative_partition(igraph_vector_int_list_t const
+    *partition_store, igraph_integer_t const n_partitions,
+    igraph_vector_int_t *most_representative_partition,
+    options const *opts)
+{
+  igraph_vector_int_t *selected_partition;
+  igraph_matrix_t nmi_sum_accumulator;
+  igraph_vector_t nmi_sums;
+  igraph_integer_t idx = 0;
+  igraph_real_t max_nmi = -1;
+
+  igraph_matrix_init(&nmi_sum_accumulator, n_partitions, opts->max_threads);
+  igraph_vector_init(&nmi_sums, n_partitions);
+
+  #pragma omp parallel for
+  for (igraph_integer_t i = 0; i < n_partitions; i++) {
+    igraph_real_t nmi;
+    igraph_integer_t thread_i = omp_get_thread_num();
+    for (igraph_integer_t j = (i + 1); j < n_partitions; j++) {
+      igraph_compare_communities(
+        igraph_vector_int_list_get_ptr(partition_store, i),
+        igraph_vector_int_list_get_ptr(partition_store, j),
+        &nmi,
+        IGRAPH_COMMCMP_NMI);
+      MATRIX(nmi_sum_accumulator, i, thread_i) += nmi;
+      MATRIX(nmi_sum_accumulator, j, thread_i) += nmi;
+    }
+  }
+
+  igraph_matrix_rowsum(&nmi_sum_accumulator, &nmi_sums);
+
+  for (igraph_integer_t i = 0; i < n_partitions; i++) {
+    if (VECTOR(nmi_sums)[i] > max_nmi) {
+      max_nmi = VECTOR(nmi_sums)[i];
+      idx = i;
+    }
+  }
+
+
+  igraph_matrix_destroy(&nmi_sum_accumulator);
+  igraph_vector_destroy(&nmi_sums);
+
+  selected_partition = igraph_vector_int_list_get_ptr(partition_store, idx);
+  igraph_vector_int_update(most_representative_partition, selected_partition);
+}
+
+static void se2_bootstrap(igraph_t *graph,
+                          igraph_vector_t const *weights,
+                          size_t const subcluster_iter,
+                          options const *opts,
+                          igraph_vector_int_t *res)
 {
   igraph_integer_t n_nodes = igraph_vcount(graph);
   igraph_vector_t kin;
@@ -102,7 +152,10 @@ static void se2_bootstrap(igraph_t *graph, igraph_vector_t const *weights,
     se2_core(graph, weights, &partition_store, partition_offset, opts);
   }
 
-  /* se2_most_representative_partition(partitions); */
+  se2_most_representative_partition(&partition_store,
+                                    n_partitions,
+                                    res, opts);
+
   igraph_vector_int_list_destroy(&partition_store);
 
   igraph_vector_destroy(&kin);
@@ -141,7 +194,7 @@ static void se2_set_defaults(options *opts)
 }
 
 int speak_easy_2(igraph_t *graph, igraph_vector_t const *weights,
-                 options *opts, outputs *res)
+                 options *opts, igraph_vector_int_t *res)
 {
   printf("\ncalling main routine at level 1\n");
   se2_set_defaults(opts);
