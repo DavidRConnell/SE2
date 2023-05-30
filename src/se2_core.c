@@ -18,7 +18,7 @@ static void se2_core(igraph_t const *graph,
                      igraph_vector_t const *weights,
                      igraph_vector_int_list_t *partition_list,
                      igraph_integer_t const partition_offset,
-                     igraph_vector_t const kin, options const *opts)
+                     options const *opts)
 {
   se2_tracker *tracker = se2_tracker_init(opts);
   igraph_vector_int_t *ic_store = igraph_vector_int_list_get_ptr(partition_list,
@@ -99,7 +99,7 @@ static void se2_bootstrap(igraph_t *graph, igraph_vector_t const *weights,
              opts->independent_runs);
     }
 
-    se2_core(graph, weights, &partition_store, partition_offset, kin, opts);
+    se2_core(graph, weights, &partition_store, partition_offset, opts);
   }
 
   /* se2_most_representative_partition(partitions); */

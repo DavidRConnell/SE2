@@ -21,9 +21,9 @@ typedef enum {
 struct se2_tracker {
   se2_mode mode;
   igraph_integer_t *time_since_last;
-  igraph_integer_t *n_times;
   igraph_bool_t allowed_to_merge;
-  igraph_integer_t n_clusters_merged;
+  igraph_real_t max_prev_merge_threshold;
+  igraph_bool_t is_partition_stable;
   igraph_bool_t bubbling_has_peaked;
   igraph_integer_t time_since_bubbling_peaked;
   igraph_integer_t max_labels_after_bubbling;
@@ -39,15 +39,13 @@ se2_tracker *se2_tracker_init(options const *opts)
 
   igraph_integer_t *time_since_mode_tracker = calloc(SE2_NUM_MODES,
       sizeof(*time_since_mode_tracker));
-  igraph_integer_t *n_times_mode_ran_tracker = calloc(SE2_NUM_MODES,
-      sizeof(*time_since_mode_tracker));
 
   se2_tracker new_tracker = {
     .mode = SE2_TYPICAL,
     .time_since_last = time_since_mode_tracker,
-    .n_times = n_times_mode_ran_tracker,
     .allowed_to_merge = false,
-    .n_clusters_merged = 0,
+    .max_prev_merge_threshold = 0,
+    .is_partition_stable = false,
     .bubbling_has_peaked = false,
     .time_since_bubbling_peaked = 0,
     .max_labels_after_bubbling = 0,
@@ -64,7 +62,6 @@ se2_tracker *se2_tracker_init(options const *opts)
 
 void se2_tracker_destroy(se2_tracker *tracker)
 {
-  free(tracker->n_times);
   free(tracker->time_since_last);
   free(tracker);
 }
@@ -76,11 +73,6 @@ igraph_integer_t se2_tracker_mode(se2_tracker const *tracker)
 
 igraph_bool_t se2_do_terminate(se2_tracker *tracker)
 {
-  // TODO Temporary early termination
-  if (tracker->n_times[SE2_TYPICAL] == 20) {
-    return true;
-  }
-
   // Should never be greater than n_partitions.
   return tracker->post_intervention_count >= tracker->n_partitions;
 }
@@ -122,7 +114,6 @@ static void se2_select_mode(igraph_integer_t const time, se2_tracker *tracker)
 static void se2_post_step_hook(se2_tracker *tracker)
 {
   tracker->intervention_event = false;
-  tracker->n_times[tracker->mode]++;
   tracker->time_since_last[tracker->mode] = 0;
   for (size_t i = 0; i < SE2_NUM_MODES; i++) {
     tracker->time_since_last[i]++;
@@ -151,8 +142,7 @@ static void se2_post_step_hook(se2_tracker *tracker)
   }
 
   if ((tracker->mode == SE2_MERGE) &&
-      (tracker->allowed_to_merge) &&
-      (tracker->n_clusters_merged == 0)) {
+      (tracker->is_partition_stable)) {
     tracker->allowed_to_merge = false;
     tracker->post_intervention_count++;
     if (tracker->post_intervention_count > 0) {
@@ -186,7 +176,10 @@ static void se2_merge_mode(igraph_t const *graph,
                            se2_tracker *tracker)
 {
   puts("merge_mode");
-  tracker->n_clusters_merged = 0;
+  tracker->is_partition_stable = se2_merge_well_connected_communities(graph,
+                                 weights,
+                                 partition,
+                                 &(tracker->max_prev_merge_threshold));
 }
 
 static void se2_nurture_mode(igraph_t const *graph,
@@ -213,7 +206,7 @@ void se2_mode_run_step(igraph_t const *graph,
     se2_bubble_mode(graph, partition, tracker);
     break;
   case SE2_MERGE:
-    se2_merge_mode(graph, weights, partition);
+    se2_merge_mode(graph, weights, partition, tracker);
     break;
   case SE2_NURTURE:
     se2_nurture_mode(graph, weights, partition);

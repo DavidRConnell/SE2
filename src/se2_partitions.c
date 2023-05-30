@@ -305,6 +305,39 @@ igraph_integer_t se2_partition_community_size(se2_partition const *partition,
   return VECTOR(*partition->community_sizes)[label];
 }
 
+static igraph_real_t se2_vector_median_i(igraph_vector_t const *vec,
+    igraph_integer_t const k, igraph_integer_t const len,
+    igraph_vector_int_t *ids)
+{
+  for (igraph_integer_t i = 0; i < len; i++) {
+    VECTOR(*ids)[i] = i;
+  }
+
+  k_smallest_i(vec, len, ids, k);
+  return VECTOR(*vec)[VECTOR(*ids)[k - 1]];
+}
+
+igraph_real_t se2_vector_median(igraph_vector_t const *vec,
+                                igraph_integer_t const len)
+{
+  igraph_vector_int_t ids;
+  igraph_real_t res;
+  igraph_integer_t k = len / 2;
+
+  igraph_vector_int_init(&ids, len);
+
+  res = se2_vector_median_i(vec, k, len, &ids);
+
+  if (len % 2) {
+    res += se2_vector_median_i(vec, k + 1, len, &ids);
+    res /= 2;
+  }
+
+  igraph_vector_int_destroy(&ids);
+
+  return res;
+}
+
 static igraph_integer_t se2_partition_median_community_size_i(
   se2_partition const *partition, igraph_vector_t const *community_sizes,
   igraph_vector_int_t *ids, igraph_integer_t const k)

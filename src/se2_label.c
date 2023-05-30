@@ -212,3 +212,220 @@ void se2_burst_large_communities(igraph_t const *graph,
 
   se2_partition_commit_changes(partition);
 }
+
+/* For each community, find the communities that would cause the greatest
+increase in modularity if merged.
+
+merge_candidates: a vector of indices where each value is the best community to
+merge with the ith community.
+modularity_change: a vector of how much the modularity would change if the
+corresponding merge_candidates were combined.
+
+modularity_change is capped to be always non-negative. */
+static void se2_best_merges(igraph_t const *graph,
+                            igraph_vector_t const *weights,
+                            se2_partition const *partition,
+                            igraph_vector_int_t *merge_candidates,
+                            igraph_vector_t *modularity_change,
+                            igraph_integer_t const n_labels)
+{
+  igraph_real_t total_weight;
+  igraph_eit_t eit;
+  igraph_matrix_t crosstalk;
+  igraph_vector_t from_edge_probability;
+  igraph_vector_t to_edge_probability;
+
+  igraph_eit_create(graph, igraph_ess_all(IGRAPH_EDGEORDER_ID), &eit);
+  igraph_matrix_init(&crosstalk, n_labels, n_labels);
+  igraph_vector_init(&from_edge_probability, n_labels);
+  igraph_vector_init(&to_edge_probability, n_labels);
+
+  igraph_vector_int_fill(merge_candidates, -1);
+
+  if (weights) {
+    total_weight = igraph_vector_sum(weights);
+  } else {
+    total_weight = igraph_ecount(graph);
+  }
+
+  igraph_integer_t eid;
+  while (!IGRAPH_EIT_END(eit)) {
+    eid = IGRAPH_EIT_GET(eit);
+    MATRIX(crosstalk,
+           LABEL(*partition)[IGRAPH_FROM(graph, eid)],
+           LABEL(*partition)[IGRAPH_TO(graph, eid)]) +=
+             weights ? VECTOR(*weights)[eid] : 1;
+    IGRAPH_EIT_NEXT(eit);
+  }
+
+  for (igraph_integer_t i = 0; i < n_labels; i++) {
+    for (igraph_integer_t j = 0; j < n_labels; j++) {
+      MATRIX(crosstalk, i, j) /= total_weight;
+    }
+  }
+
+  igraph_matrix_rowsum(&crosstalk, &from_edge_probability);
+  igraph_matrix_colsum(&crosstalk, &to_edge_probability);
+
+  igraph_real_t modularity_delta;
+  for (igraph_integer_t i = 0; i < n_labels; i++) {
+    for (igraph_integer_t j = (i + 1); j < n_labels; j++) {
+      modularity_delta =
+        MATRIX(crosstalk, i, j) + MATRIX(crosstalk, j, i) -
+        (VECTOR(from_edge_probability)[i] * VECTOR(to_edge_probability)[j]) -
+        (VECTOR(from_edge_probability)[j] * VECTOR(to_edge_probability)[i]);
+
+      if (modularity_delta > VECTOR(*modularity_change)[i]) {
+        VECTOR(*modularity_change)[i] = modularity_delta;
+        VECTOR(*merge_candidates)[i] = j;
+      }
+
+      if (modularity_delta > VECTOR(*modularity_change)[j]) {
+        VECTOR(*modularity_change)[j] = modularity_delta;
+        VECTOR(*merge_candidates)[j] = i;
+      }
+    }
+  }
+
+  igraph_eit_destroy(&eit);
+  igraph_matrix_destroy(&crosstalk);
+  igraph_vector_destroy(&from_edge_probability);
+  igraph_vector_destroy(&to_edge_probability);
+}
+
+/* Since used labels are not necessarily sequential, modularity change can be
+larger than the number of labels in use. To get the median, have to find
+elements of modularity change corresponding to labels in use.*/
+igraph_real_t se2_modularity_median(se2_partition *partition,
+                                    igraph_vector_t *modularity_change)
+{
+  igraph_vector_t modularity_change_without_gaps;
+  se2_iterator *label_iter = se2_iterator_random_label_init(partition, 0);
+  igraph_real_t res;
+
+  igraph_vector_init(&modularity_change_without_gaps, partition->n_labels);
+
+  igraph_integer_t label_id = 0;
+  igraph_integer_t label_i = 0;
+  while ((label_id = se2_iterator_next(label_iter)) != -1) {
+    VECTOR(modularity_change_without_gaps)[label_i] = VECTOR(
+          *modularity_change)[label_id];
+    label_i++;
+  }
+
+  res = se2_vector_median(&modularity_change_without_gaps, partition->n_labels);
+
+  igraph_vector_destroy(&modularity_change_without_gaps);
+  se2_iterator_destroy(label_iter);
+
+  return res;
+}
+
+igraph_bool_t se2_merge_well_connected_communities(igraph_t const *graph,
+    igraph_vector_t const *weights,
+    se2_partition *partition, igraph_real_t *max_prev_merge_threshold)
+{
+  igraph_integer_t max_label = se2_partition_max_label(partition);
+  igraph_vector_int_t merge_candidates;
+  igraph_vector_t modularity_change;
+  igraph_real_t min_merge_improvement;
+  igraph_real_t median_modularity_change;
+  igraph_integer_t n_positive_changes = 0;
+  igraph_integer_t n_merges = 0;
+
+  igraph_vector_int_init(&merge_candidates, max_label + 1);
+  igraph_vector_init(&modularity_change, max_label + 1);
+
+  se2_best_merges(graph, weights, partition, &merge_candidates,
+                  &modularity_change,
+                  max_label + 1);
+
+  for (igraph_integer_t i = 0; i <= max_label; i++) {
+    if (VECTOR(modularity_change)[i] > 0) {
+      n_positive_changes++;
+    }
+  }
+
+  if (n_positive_changes == 0) {
+    goto cleanup_early;
+  }
+
+  for (igraph_integer_t i = 0; i <= max_label; i++) {
+    if (VECTOR(merge_candidates)[i] == -1) {
+      continue;
+    }
+
+    VECTOR(modularity_change)[i] /=
+      (se2_partition_community_size(partition, i) +
+       se2_partition_community_size(partition, VECTOR(merge_candidates)[i]));
+  }
+
+  min_merge_improvement = igraph_vector_sum(&modularity_change) /
+                          n_positive_changes;
+
+  if (min_merge_improvement < (0.5 * *max_prev_merge_threshold)) {
+    goto cleanup_early;
+  }
+
+  if (min_merge_improvement > *max_prev_merge_threshold) {
+    *max_prev_merge_threshold = min_merge_improvement;
+  }
+
+  median_modularity_change = se2_modularity_median(partition,
+                             &modularity_change);
+
+  igraph_vector_bool_t merged_labels;
+  igraph_vector_int_t sort_index;
+
+  igraph_vector_bool_init(&merged_labels, max_label + 1);
+  igraph_vector_int_init(&sort_index, max_label + 1);
+  igraph_vector_qsort_ind(&modularity_change, &sort_index, IGRAPH_DESCENDING);
+
+  if (VECTOR(modularity_change)[VECTOR(sort_index)[0]] <=
+      min_merge_improvement) {
+    goto cleanup_sort;
+  }
+
+  igraph_integer_t c1, c2;
+  igraph_real_t delta;
+  for (igraph_integer_t i = 0; i <= max_label; i++) {
+    c1 = VECTOR(sort_index)[i];
+    c2 = VECTOR(merge_candidates)[c1];
+    delta = VECTOR(modularity_change)[c1];
+
+    if (delta <= median_modularity_change) {
+      // Since in order, as soon as one is too small all after must be too
+      // small.
+      break;
+    }
+
+    if ((VECTOR(merged_labels)[c1]) || (VECTOR(merged_labels)[c2])) {
+      continue;
+    }
+
+    if ((se2_partition_community_size(partition, c1) < 2) ||
+        (se2_partition_community_size(partition, c2) < 2)) {
+      continue;
+    }
+
+    VECTOR(merged_labels)[c1] = true;
+    VECTOR(merged_labels)[c2] = true;
+
+    se2_partition_merge_labels(partition, c1, c2);
+    n_merges++;
+  }
+
+  if (n_merges > 0) {
+    se2_partition_commit_changes(partition);
+  }
+
+cleanup_sort:
+  igraph_vector_bool_destroy(&merged_labels);
+  igraph_vector_int_destroy(&sort_index);
+
+cleanup_early:
+  igraph_vector_int_destroy(&merge_candidates);
+  igraph_vector_destroy(&modularity_change);
+
+  return n_merges == 0;
+}

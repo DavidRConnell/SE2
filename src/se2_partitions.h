@@ -58,6 +58,9 @@ igraph_integer_t se2_partition_community_size(se2_partition const *partition,
 igraph_integer_t se2_partition_median_community_size(se2_partition const
     *partition);
 
+igraph_real_t se2_vector_median(igraph_vector_t const *vec,
+                                igraph_integer_t const len);
+
 void se2_partition_merge_labels(se2_partition *partition, igraph_integer_t c1,
                                 igraph_integer_t c2);
 void se2_partition_relabel_mask(se2_partition *partition,
