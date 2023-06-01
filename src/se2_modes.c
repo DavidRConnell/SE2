@@ -155,7 +155,6 @@ static void se2_typical_mode(igraph_t const *graph,
                              igraph_vector_t const *weights,
                              se2_partition *partition)
 {
-  puts("typical mode");
   se2_find_most_specific_labels(graph, weights, partition,
                                 TYPICAL_FRACTION_NODES_TO_UPDATE);
 }
@@ -164,7 +163,6 @@ static void se2_bubble_mode(igraph_t const *graph,
                             se2_partition *partition,
                             se2_tracker *tracker)
 {
-  puts("bubble_mode");
   se2_burst_large_communities(graph, partition, FRACTION_NODES_TO_BUBBLE,
                               SMALLEST_COMMUNITY_TO_BUBBLE);
   tracker->labels_after_last_bubbling = partition->n_labels;
@@ -175,7 +173,6 @@ static void se2_merge_mode(igraph_t const *graph,
                            se2_partition *partition,
                            se2_tracker *tracker)
 {
-  puts("merge_mode");
   tracker->is_partition_stable = se2_merge_well_connected_communities(graph,
                                  weights,
                                  partition,
@@ -186,7 +183,6 @@ static void se2_nurture_mode(igraph_t const *graph,
                              igraph_vector_t const *weights,
                              se2_partition *partition)
 {
-  puts("nurture_mode");
   se2_relabel_worst_nodes(graph, weights, partition,
                           NURTURE_FRACTION_NODES_TO_UPDATE);
 }
