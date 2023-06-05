@@ -7,6 +7,7 @@
 #include "se2_seeding.h"
 #include "se2_random.h"
 #include "se2_modes.h"
+#include "se2_reweight_graph.h"
 
 #ifdef SE2_PRINT_PATH
 #include "se2_print.h"
@@ -115,7 +116,7 @@ static void se2_bootstrap(igraph_t *graph,
   igraph_vector_int_list_t partition_store;
 
   igraph_vector_init(&kin, n_nodes);
-  igraph_strength(graph, &kin, igraph_vss_all(), IGRAPH_IN, IGRAPH_NO_LOOPS,
+  igraph_strength(graph, &kin, igraph_vss_all(), IGRAPH_IN, IGRAPH_LOOPS,
                   weights);
 
   igraph_vector_int_list_init(&partition_store, n_partitions);
@@ -161,10 +162,19 @@ static void se2_bootstrap(igraph_t *graph,
   igraph_vector_destroy(&kin);
 }
 
-static size_t default_target_clusters()
+static size_t default_target_clusters(igraph_t const *graph)
 {
-  // TODO: Placeholder set real defaults later
-  return 20;
+  igraph_integer_t n_nodes = igraph_vcount(graph);
+
+  if (n_nodes < 10) {
+    return (size_t)n_nodes;
+  }
+
+  if ((n_nodes / 100) < 10) {
+    return 10;
+  }
+
+  return (size_t)(n_nodes / 100);
 }
 
 static size_t default_max_threads()
@@ -179,13 +189,13 @@ static size_t default_max_threads()
   return n_threads;
 }
 
-static void se2_set_defaults(options *opts)
+static void se2_set_defaults(igraph_t const *graph, options *opts)
 {
   SE2_SET_OPTION(opts, independent_runs, 10);
   SE2_SET_OPTION(opts, subcluster, 1);
   SE2_SET_OPTION(opts, multicommunity, 1);
   SE2_SET_OPTION(opts, target_partitions, 5);
-  SE2_SET_OPTION(opts, target_clusters, default_target_clusters());
+  SE2_SET_OPTION(opts, target_clusters, default_target_clusters(graph));
   SE2_SET_OPTION(opts, minclust, 5);
   SE2_SET_OPTION(opts, discard_transient, 3);
   SE2_SET_OPTION(opts, random_seed, (size_t)RNG_INTEGER(1, 9999));
@@ -193,11 +203,12 @@ static void se2_set_defaults(options *opts)
   SE2_SET_OPTION(opts, node_confidence, false);
 }
 
-int speak_easy_2(igraph_t *graph, igraph_vector_t const *weights,
+int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
                  options *opts, igraph_vector_int_t *res)
 {
   printf("\ncalling main routine at level 1\n");
-  se2_set_defaults(opts);
+  se2_set_defaults(graph, opts);
+  se2_reweight(graph, weights);
 
 #ifdef SE2_PRINT_PATH
   opts->independent_runs = 1;

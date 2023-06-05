@@ -11,7 +11,7 @@ static inline void global_label_proportions(igraph_t const *graph,
   igraph_integer_t acc = 0;
 
   igraph_vector_init(&kout, n_nodes);
-  igraph_strength(graph, &kout, igraph_vss_all(), IGRAPH_OUT, IGRAPH_NO_LOOPS,
+  igraph_strength(graph, &kout, igraph_vss_all(), IGRAPH_OUT, IGRAPH_LOOPS,
                   weights);
 
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
