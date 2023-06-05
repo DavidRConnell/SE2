@@ -3,7 +3,7 @@ MEX_DIR = mex
 INCLUDE_DIR = include
 TEST_DIR = tests/c
 
-.PHONY: all mex check lib objs debug memcheck clean
+.PHONY: all mex check lib debug memcheck clean
 
 all: mex
 	@cd $(SRC_DIR); $(MAKE) all

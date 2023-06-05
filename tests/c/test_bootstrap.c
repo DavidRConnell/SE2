@@ -5,15 +5,14 @@
 
 #include "speak_easy_2.h"
 
-
 int main()
 {
-  char *graph_name = "lesmis.gml";
+  char *graph_name = "karate.gml";
   char graph_path[1000] = "../examples/";
   igraph_t graph;
   options opts = {
-    .random_seed = 1,
-    .independent_runs = 1, // TODO: Change later.
+    .random_seed = 2,
+    .independent_runs = 10,
   };
   igraph_vector_int_t res;
   igraph_vector_int_init(&res, 1);

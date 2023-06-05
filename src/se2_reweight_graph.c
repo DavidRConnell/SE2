@@ -71,7 +71,6 @@ static void se2_new_diagonal(igraph_t *graph, igraph_vector_t *weights,
   igraph_vector_t diagonal_weights;
 
   igraph_vector_int_init(&diagonal_edges, 2 * n_diagonal_edges);
-  igraph_integer_t n = 0;
   for (igraph_integer_t i = 0; i < (2 * n_diagonal_edges); i += 2) {
     VECTOR(diagonal_edges)[i] = i / 2;
     VECTOR(diagonal_edges)[i + 1] = i / 2;

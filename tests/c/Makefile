@@ -7,7 +7,7 @@ LIB_DIR = $(TOP_DIR)/lib
 SRC_DIR = $(TOP_DIR)/src
 
 memcheck: CFLAGS += -g -O0
-debug: CFLAGS += -g3
+debug: CFLAGS += -g3 -O0
 
 .PHONY: check clean debug memcheck
 
@@ -23,7 +23,6 @@ check: test_bootstrap
 memcheck: test_bootstrap
 	valgrind --leak-check=yes --track-origins=yes ./test_bootstrap
 
-# Debug dependencies will change as entry points are added or removed.
 debug: test_bootstrap
 
 clean:

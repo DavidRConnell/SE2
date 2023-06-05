@@ -7,7 +7,7 @@ LIB_DIR = ../lib
 # TODO: Change to if statements to detect OS
 LIB_EXT = a
 
-debug: CFLAGS += -g3
+debug: CFLAGS += -g3 -O0
 
 ifdef SE2_PRINT_PATH
 CFLAGS += -DSE2_PRINT_PATH=$(SE2_PRINT_PATH)

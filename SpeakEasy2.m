@@ -44,7 +44,7 @@ function [varargout]=SpeakEasy2(ADJ,varargin)
 %                             independent run. Total partitions is
 %                             target_partitions * independent runs.
 %        'target_clusters'    Expected number of clusters to find.
-%        'minclust'           '5' (defualt) Smallest cluster size for
+%        'minclust'           '5' (default) Smallest cluster size for
 %                             subclustering. Don't attempt to subcluster a
 %                             cluster that is smaller than this.
 %        'discard_transient'  '3' (default) how many initial partitions to
@@ -54,6 +54,7 @@ function [varargout]=SpeakEasy2(ADJ,varargin)
 %      Parameter            Value
 %        'memory_efficient'  'true' (default) whether to favor memory (true)
 %                            or performance (false). Specific to full ADJ.
+%                            (Ignored when using mex).
 %        'random_seed'       Seed to use for reproducing results.
 %        'autoshutdown'      'true' (default) whether to shutdown the parpool.
 %                            If not using parallel processing, ignored. Setting
@@ -113,14 +114,18 @@ addOptional(options,'node_confidence',false,@islogical);
 parse(options,varargin{:});
 
 if isempty(options.Results.random_seed)
-     rng(randi(10000,1))
-         addOptional(options,'seed_set_by_user',0);
+     rng(randi(10000,1));
+     addOptional(options,'seed_set_by_user',0);
 else
-    rng(options.Results.random_seed)
+    rng(options.Results.random_seed);
     addOptional(options,'seed_set_by_user',1);
 end
 
-parallel_enabled = ~isempty(ver("parallel"));
+if options.Results.use_mex
+    make();
+end
+
+parallel_enabled = ~isempty(ver("parallel")) || options.Results.use_mex;
 if all(~contains(options.UsingDefaults, 'max_threads')) && ~parallel_enabled
     warning(sprintf("%s\n%s", ...
                     "Parallel toolbox required to take advantage of multiple threads.", ...
@@ -139,7 +144,7 @@ options=options.Results; %for convenience
 ADJ = ADJ_characteristics(ADJ); %some memory properties optimized on characteristics of ADJ
 
 if options.independent_runs*options.target_partitions>100
-    disp('you probably only need max value of 100 paritions, so you may be able to reduce option.independnent runs or options.target_partitions')
+    disp('you probably only need max value of 100 partitions, so you may be able to reduce option.independent runs or options.target_partitions')
 end
 
 if options.minclust<3

@@ -23,8 +23,8 @@ static void se2_core(igraph_t const *graph,
                      options const *opts)
 {
   se2_tracker *tracker = se2_tracker_init(opts);
-  igraph_vector_int_t *ic_store = igraph_vector_int_list_get_ptr(partition_list,
-                                  partition_offset);
+  igraph_vector_int_t *ic_store =
+    igraph_vector_int_list_get_ptr(partition_list, partition_offset);
   se2_partition *working_partition = se2_partition_init(graph, ic_store);
 
 #ifdef SE2_PRINT_PATH

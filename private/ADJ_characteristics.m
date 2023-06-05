@@ -31,19 +31,17 @@ max_all_ADJ=max(max(ADJ));
 
 
 fraction_to_be_full=.1;  %matrices less dense than this are cohnverted to sparse
-
-if size(ADJ)<1000  %to conserve memory, test a fraction of links unless ADJ is small
+n_samples = 100000;
+if numel(ADJ)<n_samples  %to conserve memory, test a fraction of links unless ADJ is small
     sample_of_links=ADJ(:);
-
 else
-    sample_of_links=ADJ(ceil(numel(ADJ)*rand(1,100000)));  %get random ADJ values
+    sample_of_links=ADJ(randperm(numel(ADJ), n_samples));  %get random ADJ values
 end
 
-ADJ_density=length(find(sample_of_links~=0))/length(sample_of_links);
+ADJ_density=sum(sample_of_links~=0)/length(sample_of_links);
 disp(['approximate edge density is ' num2str(ADJ_density)])
 
-if length(find(sample_of_links~=0))/length(sample_of_links)>fraction_to_be_full  %dense ADJ
-
+if ADJ_density>fraction_to_be_full  %dense ADJ
     if length(find(sample_of_links>.9999))+length(find(abs(sample_of_links)<.0001))~=length(sample_of_links);  %in case there are rounding errors
         disp('input type treated as weighted full')   %ADJ with links of only +1 and -1 will still be considered weighted
         is_ADJ_weighted=1;
