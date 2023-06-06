@@ -5,10 +5,12 @@
 #include <igraph_vector.h>
 #include <igraph_datatype.h>
 
-size_t vec_length(const mxArray *);
-int mxGetVector(igraph_vector_t *, const mxArray *);
-int mxGetIntVector(igraph_vector_int_t *, const mxArray *);
-int mxGetBoolVector(igraph_vector_bool_t *, const mxArray *);
-int mxGetMatrix(igraph_t *, const mxArray *);
+igraph_integer_t mxIgraphVectorLength(const mxArray *p);
+
+int mxIgraphGetVectorInt(igraph_vector_int_t *vec, const mxArray *p);
+mxArray *mxIgraphCreateFullAdj(igraph_t const *graph,
+                               igraph_vector_t const *weights);
+mxArray *mxIgraphCreateSparseAdj(igraph_t const *graph,
+                                 igraph_vector_t const *weights);
 
 #endif
