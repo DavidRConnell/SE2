@@ -534,7 +534,9 @@ mxArray *mxIgraphCreateSparseAdj(igraph_t const *graph,
 }
 
 /* Create a matlab vector for storing the labels of each node from an igraph
-membership partition. */
+   membership partition.
+
+   Increments igraph partition so that the smallest node id is 1 instead of 0.*/
 mxArray *mxIgraphCreatePartition(igraph_vector_int_t const *membership)
 {
   igraph_integer_t n_nodes = igraph_vector_int_size(membership);
@@ -542,7 +544,7 @@ mxArray *mxIgraphCreatePartition(igraph_vector_int_t const *membership)
   mxDouble *mxMembership = mxGetDoubles(p);
 
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
-    mxMembership[(mwIndex)i] = VECTOR(*membership)[i];
+    mxMembership[(mwIndex)i] = VECTOR(*membership)[i] + 1;
   }
 
   return p;

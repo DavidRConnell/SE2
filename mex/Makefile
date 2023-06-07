@@ -12,7 +12,11 @@ MEX_EXT = mexa64
 
 # TEMP: to add functions iteratively
 # all: $(MAT_DIR)/speak_easy_2_mex.$(MEX_EXT) $(MAT_DIR)/discreate_nmi.$(MEX_EXT)
-all: $(MAT_DIR)/read_gml.$(MEX_EXT)
+all: $(MAT_DIR)/leiden.$(MEX_EXT) \
+	$(MAT_DIR)/modularity.$(MEX_EXT) \
+	$(MAT_DIR)/optimal_modularity.$(MEX_EXT) \
+	$(MAT_DIR)/discrete_nmi.$(MEX_EXT) \
+	$(MAT_DIR)/read_gml.$(MEX_EXT)
 
 $(MAT_DIR)/speak_easy_2_mex.$(MEX_EXT): speak_easy_2.c \
 					$(INCLUDE_DIR)/speak_easy_2.h
