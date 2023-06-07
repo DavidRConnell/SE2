@@ -7,7 +7,6 @@
 #define TYPICAL_FRACTION_NODES_TO_UPDATE 0.9
 #define NURTURE_FRACTION_NODES_TO_UPDATE 0.9
 #define FRACTION_NODES_TO_BUBBLE 0.9
-#define SMALLEST_COMMUNITY_TO_BUBBLE 5
 #define POST_PEAK_BUBBLE_LIMIT 2
 
 typedef enum {
@@ -25,6 +24,7 @@ struct se2_tracker {
   igraph_real_t max_prev_merge_threshold;
   igraph_bool_t is_partition_stable;
   igraph_bool_t bubbling_has_peaked;
+  igraph_integer_t smallest_community_to_bubble;
   igraph_integer_t time_since_bubbling_peaked;
   igraph_integer_t max_labels_after_bubbling;
   igraph_integer_t labels_after_last_bubbling;
@@ -47,6 +47,7 @@ se2_tracker *se2_tracker_init(options const *opts)
     .max_prev_merge_threshold = 0,
     .is_partition_stable = false,
     .bubbling_has_peaked = false,
+    .smallest_community_to_bubble = opts->minclust,
     .time_since_bubbling_peaked = 0,
     .max_labels_after_bubbling = 0,
     .labels_after_last_bubbling = 0,
@@ -164,7 +165,7 @@ static void se2_bubble_mode(igraph_t const *graph,
                             se2_tracker *tracker)
 {
   se2_burst_large_communities(graph, partition, FRACTION_NODES_TO_BUBBLE,
-                              SMALLEST_COMMUNITY_TO_BUBBLE);
+                              tracker->smallest_community_to_bubble);
   tracker->labels_after_last_bubbling = partition->n_labels;
 }
 
