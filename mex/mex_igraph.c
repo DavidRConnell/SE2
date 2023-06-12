@@ -275,7 +275,7 @@ int mxIgraphArrayToPartition(igraph_vector_int_t *membership,
     }
   }
 
-  if (!rc) {
+  if (rc) {
     mexErrMsgIdAndTxt("Igraph:NotPartition",
                       "Value not a valid partition format.");
   }
