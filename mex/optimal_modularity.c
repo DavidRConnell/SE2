@@ -16,7 +16,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                       "OptimalModularity returns 1 to 2 outputs.");
   }
 
-  if (nrhs != 2) {
+  if (nrhs != 1) {
     mexErrMsgIdAndTxt("Igraph:OptimalModularity:WrongNumberOfInputs",
                       "OptimalModularity requires only 1 inputs,"
                       "the graph adjacency matrix.");
