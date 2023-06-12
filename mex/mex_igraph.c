@@ -74,12 +74,11 @@ static mxDouble sparse_index(const mxDouble *column, const mwIndex i,
   mwIndex rng[] = { 0, len - 1 };
   mwIndex idx = (len - 1) / 2;
   while (rng[1] > rng[0]) {
+    idx = (rng[0] + rng[1]) / 2;
     if (row_indices[idx] < i) {
       rng[0] = idx + 1;
-      idx = (rng[1] - idx) / 2;
     } else if (row_indices[idx] > i) {
       rng[1] = idx - 1;
-      idx = (idx + rng[0]) / 2;
     }
 
     if (row_indices[idx] == i) {
