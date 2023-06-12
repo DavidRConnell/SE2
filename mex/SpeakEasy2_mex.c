@@ -25,7 +25,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   igraph_t graph;
   igraph_vector_t *weights;
   igraph_vector_int_t membership;
-  options opts;
+  options opts = {};
   igraph_integer_t is_directed = -1;
 
   mxChar *name;
@@ -90,6 +90,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     weights = NULL;
   }
 
+  igraph_vector_int_init(&membership, 0);
   speak_easy_2(&graph, weights, &opts, &membership);
   igraph_destroy(&graph);
   if (weights) {
