@@ -23,7 +23,7 @@ typedef struct {
   bool node_confidence;
 } options;
 
-int speak_easy_2(igraph_t *graph, igraph_vector_t const *weights,
+int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
                  options *opts, igraph_vector_int_t *res);
 
 #endif
