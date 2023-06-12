@@ -28,9 +28,10 @@ static igraph_integer_t diagonal_weight(igraph_t const *graph,
   return VECTOR(*weights)[eid];
 }
 
-size_t se2_seeding(igraph_t const *graph, igraph_vector_t const *weights,
-                   igraph_vector_t const *kin, options const *opts,
-                   igraph_vector_int_t *ic_store)
+igraph_integer_t se2_seeding(igraph_t const *graph,
+                             igraph_vector_t const *weights,
+                             igraph_vector_t const *kin, options const *opts,
+                             igraph_vector_int_t *ic_store)
 {
   igraph_integer_t n_nodes = igraph_vcount(graph);
   igraph_bool_t directed = igraph_is_directed(graph);

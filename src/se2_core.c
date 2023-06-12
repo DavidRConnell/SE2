@@ -105,7 +105,7 @@ static void se2_most_representative_partition(igraph_vector_int_list_t const
 
 static void se2_bootstrap(igraph_t *graph,
                           igraph_vector_t const *weights,
-                          size_t const subcluster_iter,
+                          igraph_integer_t const subcluster_iter,
                           options const *opts,
                           igraph_vector_int_t *res)
 {
@@ -136,7 +136,8 @@ static void se2_bootstrap(igraph_t *graph,
     igraph_vector_int_init(&ic_store, n_nodes);
 
     se2_rng_init(run_i + opts->random_seed);
-    size_t n_unique = se2_seeding(graph, weights, &kin, opts, &ic_store);
+    igraph_integer_t n_unique = se2_seeding(graph, weights, &kin, opts,
+                                            &ic_store);
     igraph_vector_int_list_set(&partition_store, partition_offset, &ic_store);
 
     if ((!subcluster_iter) && (run_i == 0)) {
@@ -162,24 +163,24 @@ static void se2_bootstrap(igraph_t *graph,
   igraph_vector_destroy(&kin);
 }
 
-static size_t default_target_clusters(igraph_t const *graph)
+static igraph_integer_t default_target_clusters(igraph_t const *graph)
 {
   igraph_integer_t n_nodes = igraph_vcount(graph);
 
   if (n_nodes < 10) {
-    return (size_t)n_nodes;
+    return n_nodes;
   }
 
   if ((n_nodes / 100) < 10) {
     return 10;
   }
 
-  return (size_t)(n_nodes / 100);
+  return n_nodes / 100;
 }
 
-static size_t default_max_threads()
+static igraph_integer_t default_max_threads()
 {
-  size_t n_threads = 0;
+  igraph_integer_t n_threads = 0;
   // Hack since omp_get_num_threads returns 1 outside of a parallel block
   #pragma omp parallel
   {
@@ -198,7 +199,7 @@ static void se2_set_defaults(igraph_t const *graph, options *opts)
   SE2_SET_OPTION(opts, target_clusters, default_target_clusters(graph));
   SE2_SET_OPTION(opts, minclust, 5);
   SE2_SET_OPTION(opts, discard_transient, 3);
-  SE2_SET_OPTION(opts, random_seed, (size_t)RNG_INTEGER(1, 9999));
+  SE2_SET_OPTION(opts, random_seed, RNG_INTEGER(1, 9999));
   SE2_SET_OPTION(opts, max_threads, default_max_threads());
   SE2_SET_OPTION(opts, node_confidence, false);
 }
@@ -220,9 +221,9 @@ int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
     // pass;
   }
 
-  for (size_t i = 1; i < opts->subcluster; i++) {
-    // pass;
-  }
+  /* for (igraph_integer_t i = 1; i < opts->subcluster; i++) { */
+  // pass;
+  /* } */
 
   return IGRAPH_SUCCESS;
 }

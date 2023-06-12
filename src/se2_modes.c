@@ -116,7 +116,7 @@ static void se2_post_step_hook(se2_tracker *tracker)
 {
   tracker->intervention_event = false;
   tracker->time_since_last[tracker->mode] = 0;
-  for (size_t i = 0; i < SE2_NUM_MODES; i++) {
+  for (igraph_integer_t i = 0; i < SE2_NUM_MODES; i++) {
     tracker->time_since_last[i]++;
   }
 
