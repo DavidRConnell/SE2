@@ -73,17 +73,17 @@ static mxDouble sparse_index(const mxDouble *column, const mwIndex i,
 
   mwIndex rng[] = { 0, len - 1 };
   mwIndex idx = (len - 1) / 2;
-  while (rng[1] > rng[0]) {
-    idx = (rng[0] + rng[1]) / 2;
-    if (row_indices[idx] < i) {
-      rng[0] = idx + 1;
-    } else if (row_indices[idx] > i) {
-      rng[1] = idx - 1;
-    }
-
+  while ((rng[1] >= rng[0]) && (rng[1] < len)) { // Protect against underflow
     if (row_indices[idx] == i) {
       return column[idx];
     }
+
+    if (row_indices[idx] < i) {
+      rng[0] = idx + 1;
+    } else {
+      rng[1] = idx - 1;
+    }
+    idx = (rng[0] + rng[1]) / 2;
   }
 
   return 0;
@@ -99,8 +99,8 @@ static igraph_bool_t mxIgraphIsSymmetricSparse(const mxArray *p)
   mxDouble reflection;
   mwIndex row_i;
   for (mwIndex j = 0; j < n_nodes; j++) {
-    for (mwIndex i = jc[j], row_i = ir[i];
-         (row_i < j) && (i < jc[j + 1]); i++) {
+    for (mwIndex i = jc[j]; i < jc[j + 1]; i++) {
+      row_i = ir[i];
       reflection = sparse_index(adj + jc[row_i], j,
                                 ir + jc[row_i],
                                 jc[row_i + 1] - jc[row_i]);
