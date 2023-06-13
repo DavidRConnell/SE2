@@ -24,7 +24,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                       "the graph adjacency matrix.");
   }
 
-  directed = mxIgraphIsSymmetric(prhs[0]);
+  directed = !mxIgraphIsSymmetric(prhs[0]);
   mxIgraphArrayToGraph(&graph, prhs[0], directed);
   if (mxIgraphIsWeighted(prhs[0])) {
     mxIgraphArrayToWeights(&weights, prhs[0], directed);

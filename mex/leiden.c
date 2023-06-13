@@ -27,7 +27,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                       mexFunctionName());
   }
 
-  directed = mxIgraphIsSymmetric(prhs[0]);
+  directed = !mxIgraphIsSymmetric(prhs[0]);
+  if (directed) {
+    // TODO: Eventually should be covered by setting the igraph error handler.
+    mexErrMsgIdAndTxt("Igraph:Leiden:Undirected",
+                      "Leiden algorithm is only implemented for undirected graphs.");
+  }
+
   mxIgraphArrayToGraph(&graph, prhs[0], directed);
   if (mxIgraphIsWeighted(prhs[0])) {
     mxIgraphArrayToWeights(&weights, prhs[0], directed);

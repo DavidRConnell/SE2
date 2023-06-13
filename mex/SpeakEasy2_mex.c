@@ -80,7 +80,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   }
 
   if (is_directed < 0) {
-    is_directed = mxIgraphIsSymmetric(prhs[0]);
+    is_directed = !mxIgraphIsSymmetric(prhs[0]);
   }
 
   mxIgraphArrayToGraph(&graph, prhs[0], is_directed);
