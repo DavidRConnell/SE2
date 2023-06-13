@@ -89,6 +89,82 @@ static mxDouble sparse_index(const mxDouble *column, const mwIndex i,
   return 0;
 }
 
+static igraph_bool_t comp_lessthan(mwIndex a, mwIndex b)
+{
+  return a < b;
+}
+
+static igraph_bool_t comp_greaterthan(mwIndex a, mwIndex b)
+{
+  return a > b;
+}
+
+static igraph_bool_t isTriSparse(const mxArray *p, igraph_bool_t comp(mwIndex,
+                                 mwIndex))
+{
+  mxDouble *adj = mxGetDoubles(p);
+  mwIndex *ir = mxGetIr(p);
+  mwIndex *jc = mxGetJc(p);
+  mwIndex n_nodes = mxGetM(p);
+  mwIndex row_i;
+
+  for (mwIndex j = 0; j < n_nodes; j++) {
+    for (mwIndex i = jc[j]; i < jc[j + 1]; i++) {
+      row_i = ir[i];
+      if (comp(row_i, j)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+static mwIndex regular_index(mwIndex i, mwIndex j, mwIndex n_rows)
+{
+  return i + (j * n_rows);
+}
+
+static mwIndex transposed_index(mwIndex i, mwIndex j, mwIndex n_rows)
+{
+  return j + (i * n_rows);
+}
+
+static igraph_bool_t isTriFull(const mxArray *p, mwIndex index(mwIndex,
+                               mwIndex, mwIndex))
+{
+  mxDouble *adj = mxGetDoubles(p);
+  mwIndex n_nodes = mxGetM(p);
+
+  for (mwIndex i = 0; i < n_nodes; i++) {
+    for (mwIndex j = (i + 1); j < n_nodes; j++) {
+      if (adj[index(i, j, n_nodes)] != 0) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+static igraph_bool_t isTriU(const mxArray *p)
+{
+  if (mxIsSparse(p)) {
+    return isTriSparse(p, comp_greaterthan);
+  }
+
+  return isTriFull(p, transposed_index);
+}
+
+static igraph_bool_t isTriL(const mxArray *p)
+{
+  if (mxIsSparse(p)) {
+    return isTriSparse(p, comp_lessthan);
+  }
+
+  return isTriFull(p, regular_index);
+}
+
 static igraph_bool_t mxIgraphIsSymmetricSparse(const mxArray *p)
 {
   mxDouble *adj = mxGetDoubles(p);
@@ -174,6 +250,12 @@ igraph_integer_t mxIgraphECount(const mxArray *p)
   }
 
   return n_edges;
+}
+
+/* Guess if the graph is directed or not. */
+igraph_bool_t mxIgraphIsDirected(const mxArray *p)
+{
+  return !(isTriU(p) || isTriL(p) || mxIgraphIsSymmetric(p));
 }
 
 /* Check if the matlab array pointed to by p is either a row or column
@@ -292,13 +374,14 @@ static int mxIgraphGraphFromSparseAdj(igraph_t *graph, const mxArray *p,
   igraph_integer_t n_nodes = mxIgraphVCount(p);
   igraph_integer_t n_edges = mxIgraphECount(p);
   igraph_vector_int_t edges;
+  igraph_bool_t tril = isTriL(p);
 
   igraph_vector_int_init(&edges, n_edges * 2);
 
   igraph_integer_t edge_i = 0;
   for (igraph_integer_t j = 0; j < n_nodes; j++) {
     for (igraph_integer_t i = jc[j];
-         (directed ? true : ir[i] <= j) && (i < jc[j + 1]); i++) {
+         ((directed || tril) ? true : ir[i] <= j) && (i < jc[j + 1]); i++) {
       VECTOR(edges)[edge_i] = ir[i];
       VECTOR(edges)[edge_i + 1] = j;
       edge_i += 2;
@@ -383,13 +466,14 @@ static int mxIgraphWeightsFromSparseAdj(igraph_vector_t *weights,
   mwIndex *jc = mxGetJc(p);
   igraph_integer_t n_nodes = mxIgraphVCount(p);
   igraph_integer_t n_edges = mxIgraphECount(p);
+  igraph_bool_t tril = isTriL(p);
 
   igraph_vector_init(weights, n_edges * 2);
 
   igraph_integer_t edge_i = 0;
   for (igraph_integer_t j = 0; j < n_nodes; j++) {
     for (igraph_integer_t i = jc[j];
-         (directed ? true : ir[i] < j) && (i < jc[j + 1]); i++) {
+         ((directed || tril) ? true : ir[i] < j) && (i < jc[j + 1]); i++) {
       VECTOR(*weights)[edge_i] = ir[i];
       VECTOR(*weights)[edge_i + 1] = j;
       edge_i += 2;

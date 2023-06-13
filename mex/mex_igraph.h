@@ -7,6 +7,7 @@
 
 igraph_bool_t mxIgraphIsWeighted(const mxArray *p);
 igraph_bool_t mxIgraphIsSymmetric(const mxArray *p);
+igraph_bool_t mxIgraphIsDirected(const mxArray *p);
 igraph_integer_t mxIgraphVCount(const mxArray *p);
 igraph_integer_t mxIgraphECount(const mxArray *p);
 igraph_integer_t mxIgraphVectorLength(const mxArray *p);

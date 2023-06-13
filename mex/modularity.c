@@ -22,7 +22,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                       "matrix and a membership partition.");
   }
 
-  directed = !mxIgraphIsSymmetric(prhs[0]);
+  directed = mxIgraphIsDirected(prhs[0]);
   mxIgraphArrayToGraph(&graph, prhs[0], directed);
   if (mxIgraphIsWeighted(prhs[0])) {
     mxIgraphArrayToWeights(weights, prhs[0], directed);

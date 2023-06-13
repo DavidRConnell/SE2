@@ -27,7 +27,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                       mexFunctionName());
   }
 
-  directed = !mxIgraphIsSymmetric(prhs[0]);
+  directed = mxIgraphIsDirected(prhs[0]);
   if (directed) {
     // TODO: Eventually should be covered by setting the igraph error handler.
     mexErrMsgIdAndTxt("Igraph:Leiden:Undirected",
