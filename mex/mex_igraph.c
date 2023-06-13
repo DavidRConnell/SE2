@@ -464,9 +464,9 @@ int mxIgraphArrayToWeights(igraph_vector_t *weights, const mxArray *p,
 mxArray *mxIgraphCreateFullAdj(igraph_t const *graph,
                                igraph_vector_t const *weights)
 {
-  igraph_integer_t n_nodes = igraph_vcount(graph);
+  mwSize n_nodes = (mwSize)igraph_vcount(graph);
   mxArray *p = mxCreateDoubleMatrix(n_nodes, n_nodes, mxREAL);
-  mxDouble *adj = mxGetDoubles(p);
+  double *adj = mxGetDoubles(p);
   igraph_eit_t eit;
   igraph_integer_t eid;
   mwIndex idx;
@@ -475,8 +475,9 @@ mxArray *mxIgraphCreateFullAdj(igraph_t const *graph,
 
   while (!IGRAPH_EIT_END(eit)) {
     eid = IGRAPH_EIT_GET(eit);
-    idx = IGRAPH_FROM(graph, eid) + (n_nodes * IGRAPH_TO(graph, eid));
-    adj[idx] = (mxDouble)(weights ? VECTOR(*weights)[eid] : 1);
+    idx = (mwSize)IGRAPH_FROM(graph, eid) +
+          (n_nodes * (mwSize)IGRAPH_TO(graph, eid));
+    adj[idx] = (double)(weights ? VECTOR(*weights)[eid] : 1);
 
     IGRAPH_EIT_NEXT(eit);
   }
@@ -495,10 +496,10 @@ mxArray *mxIgraphCreateFullAdj(igraph_t const *graph,
 mxArray *mxIgraphCreateSparseAdj(igraph_t const *graph,
                                  igraph_vector_t const *weights)
 {
-  igraph_integer_t n_edges = igraph_ecount(graph);
-  igraph_integer_t n_nodes = igraph_vcount(graph);
+  mwSize n_edges = (mwSize)igraph_ecount(graph);
+  mwSize n_nodes = (mwSize)igraph_vcount(graph);
   mxArray *p = mxCreateSparse(n_nodes, n_nodes, n_edges, mxREAL);
-  mxDouble *adj = mxGetDoubles(p);
+  double *adj = mxGetDoubles(p);
   mwIndex *jc = mxGetJc(p);
   mwIndex *ir = mxGetIr(p);
   igraph_eit_t eit;
@@ -519,13 +520,17 @@ mxArray *mxIgraphCreateSparseAdj(igraph_t const *graph,
       prev_column = column;
     }
 
-    ir[count] = IGRAPH_FROM(graph, eid);
-    adj[count] = (mxDouble)(weights ? VECTOR(*weights)[eid] : 1);
+    ir[count] = (mwIndex)IGRAPH_FROM(graph, eid);
+    adj[count] = (double)(weights ? VECTOR(*weights)[eid] : 1);
 
     IGRAPH_EIT_NEXT(eit);
     count++;
   }
-  jc[n_nodes] = count;
+
+  while (column < n_nodes) {
+    jc[column + 1] = count;
+    column++;
+  }
 
   igraph_eit_destroy(&eit);
 
@@ -540,10 +545,10 @@ mxArray *mxIgraphCreatePartition(igraph_vector_int_t const *membership)
 {
   igraph_integer_t n_nodes = igraph_vector_int_size(membership);
   mxArray *p = mxCreateDoubleMatrix(n_nodes, 1, mxREAL);
-  mxDouble *mxMembership = mxGetDoubles(p);
+  double *mxMembership = mxGetDoubles(p);
 
   for (igraph_integer_t i = 0; i < n_nodes; i++) {
-    mxMembership[(mwIndex)i] = VECTOR(*membership)[i] + 1;
+    mxMembership[(mwIndex)i] = (double)VECTOR(*membership)[i] + 1;
   }
 
   return p;
