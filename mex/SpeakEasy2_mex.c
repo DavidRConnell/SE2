@@ -4,7 +4,7 @@
 #include <igraph_interface.h>
 #include <string.h>
 
-#define STREQ(a, b) strcmp((char *)(a), (char *)(b)) == 0
+#define STREQ(a, b) strcmp((a), (b)) == 0
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
@@ -28,7 +28,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   options opts = {};
   igraph_integer_t is_directed = -1;
 
-  mxChar *name;
+  char *name;
   mwSize n_provided_optionals = nrhs - n_required_inputs;
   const mxArray **optionals = prhs + n_required_inputs;
   for (mwIndex i = 0; i < n_provided_optionals; i += 2) {
@@ -37,7 +37,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                         "Expected argument %s to be a string",
                         n_required_inputs + i + 1);
     }
-    name = mxGetChars(optionals[i]);
+    name = mxArrayToString(optionals[i]);
 
     if (STREQ(name, "is_directed")) {
       is_directed = mxGetScalar(optionals[i + 1])
