@@ -23,7 +23,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   }
 
   igraph_t graph;
-  igraph_vector_t *weights;
+  igraph_vector_t weights;
+  igraph_vector_t *weights_ptr = NULL;
   igraph_vector_int_t membership;
   options opts = {};
   igraph_integer_t is_directed = -1;
@@ -85,16 +86,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mxIgraphArrayToGraph(&graph, prhs[0], is_directed);
 
   if (mxIgraphIsWeighted(prhs[0])) {
-    mxIgraphArrayToWeights(weights, prhs[0], is_directed);
-  } else {
-    weights = NULL;
+    mxIgraphArrayToWeights(&weights, prhs[0], is_directed);
+    weights_ptr = &weights;
   }
 
   igraph_vector_int_init(&membership, 0);
-  speak_easy_2(&graph, weights, &opts, &membership);
+  speak_easy_2(&graph, weights_ptr, &opts, &membership);
   igraph_destroy(&graph);
-  if (weights) {
-    igraph_vector_destroy(weights);
+
+  if (weights_ptr) {
+    igraph_vector_destroy(&weights);
   }
 
   plhs[0] = mxIgraphCreatePartition(&membership);
