@@ -388,7 +388,7 @@ static int mxIgraphGraphFromSparseAdj(igraph_t *graph, const mxArray *p,
     }
   }
 
-  if (edge_i < n_edges) {
+  if (edge_i < (n_edges * 2)) {
     igraph_vector_int_resize(&edges, edge_i);
   }
 
@@ -480,7 +480,7 @@ static int mxIgraphWeightsFromSparseAdj(igraph_vector_t *weights,
     }
   }
 
-  if (edge_i < n_edges) {
+  if (edge_i < (n_edges * 2)) {
     igraph_vector_resize(weights, edge_i);
   }
 
