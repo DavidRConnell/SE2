@@ -16,7 +16,8 @@ all: $(IGRAPH_DIR)/SpeakEasy2.$(MEX_EXT) \
 	$(IGRAPH_DIR)/modularity.$(MEX_EXT) \
 	$(IGRAPH_DIR)/optimal_modularity.$(MEX_EXT) \
 	$(MAT_DIR)/discrete_nmi.$(MEX_EXT) \
-	$(IGRAPH_DIR)/read_gml.$(MEX_EXT)
+	$(IGRAPH_DIR)/read_gml.$(MEX_EXT) \
+	$(IGRAPH_DIR)/similarity.$(MEX_EXT)
 
 $(IGRAPH_DIR)/SpeakEasy2.$(MEX_EXT): SpeakEasy2.c mex_igraph.c \
 	mex_igraph.h $(INCLUDE_DIR)/speak_easy_2.h
@@ -32,3 +33,4 @@ $(IGRAPH_DIR)/%.$(MEX_EXT): %.c mex_igraph.c mex_igraph.h
 
 clean:
 	-rm $(MAT_DIR)/*.$(MEX_EXT)
+	-rm $(IGRAPH_DIR)/*.$(MEX_EXT)
