@@ -72,6 +72,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
       opts.target_clusters = mxGetScalar(optionals[i + 1]);
     } else if (STREQ(name, "target_partitions")) {
       opts.target_partitions = mxGetScalar(optionals[i + 1]);
+    } else if (STREQ(name, "verbose")) {
+      opts.verbose = mxGetScalar(optionals[i + 1]);
     } else {
       mexErrMsgIdAndTxt("SE2:NameError",
                         "Unknown name %s in name-value pair.",

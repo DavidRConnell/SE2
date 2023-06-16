@@ -24,6 +24,7 @@ typedef struct {
   igraph_integer_t random_seed;       // Seed for reproducing results.
   igraph_integer_t max_threads;       // Number of threads to use.
   bool node_confidence;
+  bool verbose; // Print information to stdout
 } options;
 
 int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
