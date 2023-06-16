@@ -57,6 +57,10 @@ static igraph_bool_t mxIgraphIsWeightedFull(const mxArray *p)
 /* Test if adjacency matrix p points to has values other than 0 or 1. */
 igraph_bool_t mxIgraphIsWeighted(const mxArray *p)
 {
+  if (mxIsLogical(p)) {
+    return false;
+  }
+
   if (mxIsSparse(p)) {
     return mxIgraphIsWeightedSparse(p);
   }
@@ -130,6 +134,23 @@ static mwIndex transposed_index(mwIndex i, mwIndex j, mwIndex n_rows)
   return j + (i * n_rows);
 }
 
+static igraph_bool_t isTriLogical(const mxArray *p, mwIndex index(mwIndex,
+                                  mwIndex, mwIndex))
+{
+  bool *adj = mxGetLogicals(p);
+  mwIndex n_nodes = mxGetM(p);
+
+  for (mwIndex i = 0; i < n_nodes; i++) {
+    for (mwIndex j = (i + 1); j < n_nodes; j++) {
+      if (adj[index(i, j, n_nodes)] != 0) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 static igraph_bool_t isTriFull(const mxArray *p, mwIndex index(mwIndex,
                                mwIndex, mwIndex))
 {
@@ -153,6 +174,10 @@ static igraph_bool_t isTriU(const mxArray *p)
     return isTriSparse(p, comp_greaterthan);
   }
 
+  if (mxIsLogical(p)) {
+    return isTriLogical(p, transposed_index);
+  }
+
   return isTriFull(p, transposed_index);
 }
 
@@ -160,6 +185,10 @@ static igraph_bool_t isTriL(const mxArray *p)
 {
   if (mxIsSparse(p)) {
     return isTriSparse(p, comp_lessthan);
+  }
+
+  if (mxIsLogical(p)) {
+    return isTriLogical(p, regular_index);
   }
 
   return isTriFull(p, regular_index);
@@ -181,6 +210,22 @@ static igraph_bool_t mxIgraphIsSymmetricSparse(const mxArray *p)
                                 ir + jc[row_i],
                                 jc[row_i + 1] - jc[row_i]);
       if (reflection != adj[i]) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+static igraph_bool_t mxIgraphIsSymmetricLogical(const mxArray *p)
+{
+  bool *adj = mxGetLogicals(p);
+  mwIndex n_nodes = mxGetM(p);
+
+  for (mwIndex i = 0; i < n_nodes; i++) {
+    for (mwIndex j = (i + 1); j < n_nodes; j++) {
+      if (adj[i + (j * n_nodes)] != adj[j + (i * n_nodes)]) {
         return false;
       }
     }
@@ -216,6 +261,10 @@ igraph_bool_t mxIgraphIsSymmetric(const mxArray *p)
     return mxIgraphIsSymmetricSparse(p);
   }
 
+  if (mxIsLogical(p)) {
+    return mxIgraphIsSymmetricLogical(p);
+  }
+
   return mxIgraphIsSymmetricFull(p);
 }
 
@@ -237,6 +286,20 @@ igraph_integer_t mxIgraphECount(const mxArray *p)
   if (mxIsSparse(p)) {
     mwIndex *jc = mxGetJc(p);
     return (igraph_integer_t)jc[n_nodes];
+  }
+
+  if (mxIsLogical(p)) {
+    bool *adj = mxGetLogicals(p);
+    igraph_integer_t n_edges = 0;
+    for (mwIndex i = 0; i < n_nodes; i++) {
+      for (mwIndex j = 0; j < n_nodes; j++) {
+        if (adj[i + (j * n_nodes)]) {
+          n_edges++;
+        }
+      }
+    }
+
+    return n_edges;
   }
 
   mxDouble *adj = mxGetDoubles(p);
@@ -398,6 +461,37 @@ static int mxIgraphGraphFromSparseAdj(igraph_t *graph, const mxArray *p,
   return EXIT_SUCCESS;
 }
 
+static int mxIgraphGraphFromLogicalAdj(igraph_t *graph, const mxArray *p,
+                                       const igraph_bool_t directed)
+{
+  bool *adj = mxGetLogicals(p);
+  igraph_integer_t n_nodes = mxIgraphVCount(p);
+  igraph_integer_t n_edges = mxIgraphECount(p);
+  igraph_vector_int_t edges;
+
+  igraph_vector_int_init(&edges, n_edges * 2);
+
+  igraph_integer_t edge_i = 0;
+  for (igraph_integer_t i = 0; i < n_nodes; i++) {
+    for (igraph_integer_t j = (directed ? 0 : i); j < n_nodes; j++) {
+      if (adj[i + (j * n_nodes)]) {
+        VECTOR(edges)[edge_i] = i;
+        VECTOR(edges)[edge_i + 1] = j;
+        edge_i += 2;
+      }
+    }
+  }
+
+  if (edge_i < (n_edges * 2)) {
+    igraph_vector_int_resize(&edges, edge_i);
+  }
+
+  igraph_add_edges(graph, &edges, NULL);
+  igraph_vector_int_destroy(&edges);
+
+  return EXIT_SUCCESS;
+}
+
 static int mxIgraphGraphFromFullAdj(igraph_t *graph, const mxArray *p,
                                     const igraph_bool_t directed)
 {
@@ -419,7 +513,7 @@ static int mxIgraphGraphFromFullAdj(igraph_t *graph, const mxArray *p,
     }
   }
 
-  if (edge_i < n_edges) {
+  if (edge_i < (n_edges * 2)) {
     igraph_vector_int_resize(&edges, edge_i);
   }
 
@@ -450,6 +544,8 @@ int mxIgraphArrayToGraph(igraph_t *graph, const mxArray *p,
   int rc;
   if (mxIsSparse(p)) {
     rc = mxIgraphGraphFromSparseAdj(graph, p, directed);
+  } else if (mxIsLogical(p)) {
+    rc = mxIgraphGraphFromLogicalAdj(graph, p, directed);
   } else {
     rc = mxIgraphGraphFromFullAdj(graph, p, directed);
   }
