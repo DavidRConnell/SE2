@@ -202,6 +202,8 @@ static void se2_set_defaults(igraph_t const *graph, options *opts)
   SE2_SET_OPTION(opts, random_seed, RNG_INTEGER(1, 9999));
   SE2_SET_OPTION(opts, max_threads, default_max_threads());
   SE2_SET_OPTION(opts, node_confidence, false);
+
+  omp_set_num_threads(opts->max_threads);
 }
 
 int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
