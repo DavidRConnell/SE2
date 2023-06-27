@@ -115,7 +115,7 @@ static void se2_remove_diagonal(igraph_t *graph, igraph_vector_t *weights)
   while (!(IGRAPH_EIT_END(eit))) {
     eid = IGRAPH_EIT_GET(eit);
 
-    if (n_diagonal_edges > 0) {
+    if ((n_diagonal_edges > 0) && weights) {
       VECTOR(*weights)[eid - n_diagonal_edges] = VECTOR(*weights)[eid];
     }
 
