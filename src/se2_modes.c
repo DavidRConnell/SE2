@@ -120,17 +120,12 @@ static void se2_post_step_hook(se2_tracker *tracker)
     tracker->time_since_last[i]++;
   }
 
-  if (tracker->mode == SE2_BUBBLE) {
-    if (tracker->bubbling_has_peaked) {
-      tracker->time_since_bubbling_peaked++;
-      if (tracker->time_since_bubbling_peaked >= POST_PEAK_BUBBLE_LIMIT) {
-        tracker->time_since_bubbling_peaked = 0;
-        tracker->allowed_to_merge = true;
-      }
-    } else {
+  switch (tracker->mode) {
+  case SE2_BUBBLE:
+    if (!tracker->bubbling_has_peaked) {
       if ((tracker->labels_after_last_bubbling > 2) &&
-          (tracker->labels_after_last_bubbling <
-           (0.9 * tracker->max_labels_after_bubbling))) {
+          (tracker->max_labels_after_bubbling >
+           (tracker->labels_after_last_bubbling * 0.9))) {
         tracker->bubbling_has_peaked = true;
       }
 
@@ -140,15 +135,31 @@ static void se2_post_step_hook(se2_tracker *tracker)
           tracker->labels_after_last_bubbling;
       }
     }
-  }
 
-  if ((tracker->mode == SE2_MERGE) &&
-      (tracker->is_partition_stable)) {
-    tracker->allowed_to_merge = false;
-    tracker->post_intervention_count++;
-    if (tracker->post_intervention_count > 0) {
-      tracker->intervention_event = true;
+    if (tracker->bubbling_has_peaked) {
+      tracker->time_since_bubbling_peaked++;
+      if (tracker->time_since_bubbling_peaked >= POST_PEAK_BUBBLE_LIMIT) {
+        tracker->time_since_bubbling_peaked = 0;
+        tracker->allowed_to_merge = true;
+      }
     }
+    break;
+
+  case SE2_MERGE:
+    tracker->bubbling_has_peaked = false;
+    tracker->time_since_bubbling_peaked = 0;
+    tracker->max_labels_after_bubbling = 0;
+
+    if (tracker->is_partition_stable) {
+      tracker->allowed_to_merge = false;
+      tracker->post_intervention_count++;
+      if (tracker->post_intervention_count > 0) {
+        tracker->intervention_event = true;
+      }
+    }
+
+  default: // Just to "handle" all cases even though not needed.
+    break;
   }
 }
 

@@ -42,9 +42,17 @@ se2_partition *se2_partition_init(igraph_t const *graph,
   igraph_vector_int_t *community_sizes = malloc(sizeof(*community_sizes));
   igraph_integer_t n_labels = 0;
 
+  // TODO: Make into an igraph error.
+  if (igraph_vector_int_size(initial_labels) != n_nodes) {
+    printf("Membership vector size differs from number of vertices.");
+  }
+
   igraph_vector_init(specificity, n_nodes);
   igraph_vector_int_init(stage, n_nodes);
   igraph_vector_int_init(community_sizes, 0);
+
+  igraph_vector_int_update(stage, initial_labels);
+
   n_labels = se2_count_labels(initial_labels, community_sizes);
 
   se2_partition new_partition = {

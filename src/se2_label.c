@@ -92,6 +92,7 @@ static void se2_find_most_specific_labels_i(igraph_t const *graph,
 
   igraph_integer_t node_id = 0, label_id = 0;
   while ((node_id = se2_iterator_next(node_iter)) != -1) {
+    igraph_vector_null(&labels_observed);
     local_label_proportions(graph, weights, partition, node_id,
                             &labels_observed, &node_kin, max_label + 1);
     while ((label_id = se2_iterator_next(label_iter)) != -1) {
