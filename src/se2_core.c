@@ -242,6 +242,7 @@ int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
 
 #ifdef SE2_PRINT_PATH
   opts->independent_runs = 1;
+  opts->target_partitions = 1;
 #endif
 
   se2_bootstrap(graph, weights, 0, opts, res);
