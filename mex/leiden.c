@@ -11,7 +11,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   igraph_vector_t *weights_ptr = NULL;
   igraph_vector_int_t membership;
 
-  igraph_real_t resolution = 1;
+  igraph_real_t resolution = 0.7;
   igraph_real_t beta = 0.01;
   igraph_integer_t n_iterations = -1;
 

@@ -20,7 +20,7 @@ all: $(IGRAPH_DIR)/SpeakEasy2.$(MEX_EXT) \
 	$(IGRAPH_DIR)/similarity.$(MEX_EXT)
 
 $(IGRAPH_DIR)/SpeakEasy2.$(MEX_EXT): SpeakEasy2.c mex_igraph.c \
-	mex_igraph.h $(INCLUDE_DIR)/speak_easy_2.h
+	mex_igraph.h $(INCLUDE_DIR)/speak_easy_2.h $(LIB_DIR)/libse2.a
 
 	mex -outdir $(IGRAPH_DIR) $(MEXFLAGS) $(COPTIMFLAGS) \
 		LDFLAGS="-fopenmp" SpeakEasy2.c mex_igraph.c -ligraph -lse2
