@@ -4,6 +4,8 @@
 #include "se2_partitions.h"
 #include "se2_random.h"
 
+#define MAX(a, b) (a) > (b) ? (a) : (b)
+
 struct se2_iterator {
   igraph_vector_int_t *ids;
   igraph_integer_t pos;
@@ -277,8 +279,13 @@ igraph_integer_t se2_partition_new_label(se2_partition *partition)
     next_label++;
   }
 
+  if (next_label == igraph_vector_int_capacity(partition->community_sizes)) {
+    igraph_vector_int_reserve(partition->community_sizes,
+                              MAX(2 * pool_size, partition->n_nodes));
+  }
+
   if (next_label == pool_size) {
-    igraph_vector_int_resize(partition->community_sizes, pool_size + 1);
+    igraph_vector_int_push_back(partition->community_sizes, 0);
   }
 
   if (next_label > partition->max_label) {
