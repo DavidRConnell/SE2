@@ -3,7 +3,7 @@ MEX_DIR = mex
 INCLUDE_DIR = include
 TEST_DIR = tests/c
 
-.PHONY: all mex check lib debug memcheck clean
+.PHONY: all mex check lib install debug memcheck clean
 
 all: mex
 	@cd $(SRC_DIR); $(MAKE) all
@@ -11,7 +11,10 @@ all: mex
 lib:
 	@cd $(SRC_DIR); $(MAKE) libse2
 
-mex: lib
+install:
+	@cd $(SRC_DIR); $(MAKE) install
+
+mex: install
 	@cd $(MEX_DIR); $(MAKE) all
 
 check: lib

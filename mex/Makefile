@@ -1,10 +1,11 @@
 INCLUDE_DIR = ../include
-LIB_DIR = ../lib
 MAT_DIR = ../private
+INSTALL_DIR = $(HOME)/.local/share
 IGRAPH_DIR = ../+igraph
 
 COPTIMFLAGS = "COPTIMFLAGS=-O3 -fwrapv -fopenmp -DNDEBUG"
-MEXFLAGS = -I$(INCLUDE_DIR) -L$(LIB_DIR) -L$(LD_LIBRARY_PATH) -R2018a
+LDFLAGS = "LDFLAGS=-Wl,-rpath=$(INSTALL_DIR)/igraph/lib,-rpath=$(INSTALL_DIR)/SE2/lib -fopenmp"
+MEXFLAGS = -I$(INCLUDE_DIR) -I$(INSTALL_DIR)/igraph/include -L$(INSTALL_DIR)/SE2/lib -L$(INSTALL_DIR)/igraph/lib -R2018a
 
 # TODO: Change to if statements to detect OS
 MEX_EXT = mexa64
@@ -17,13 +18,14 @@ all: $(IGRAPH_DIR)/SpeakEasy2.$(MEX_EXT) \
 	$(IGRAPH_DIR)/optimal_modularity.$(MEX_EXT) \
 	$(MAT_DIR)/discrete_nmi.$(MEX_EXT) \
 	$(IGRAPH_DIR)/read_gml.$(MEX_EXT) \
+	$(IGRAPH_DIR)/write_edgelist.$(MEX_EXT) \
 	$(IGRAPH_DIR)/similarity.$(MEX_EXT)
 
 $(IGRAPH_DIR)/SpeakEasy2.$(MEX_EXT): SpeakEasy2.c mex_igraph.c \
-	mex_igraph.h $(INCLUDE_DIR)/speak_easy_2.h $(LIB_DIR)/libse2.a
+	mex_igraph.h $(INCLUDE_DIR)/speak_easy_2.h $(INSTALL_DIR)/SE2/lib/libse2.so
 
 	mex -outdir $(IGRAPH_DIR) $(MEXFLAGS) $(COPTIMFLAGS) \
-		LDFLAGS="-fopenmp" SpeakEasy2.c mex_igraph.c -ligraph -lse2
+		$(LDFLAGS) SpeakEasy2.c mex_igraph.c -ligraph -lse2
 
 $(MAT_DIR)/%.$(MEX_EXT): %.c mex_igraph.c mex_igraph.h
 	mex -outdir $(MAT_DIR) $(MEXFLAGS) $*.c mex_igraph.c -ligraph
