@@ -4,6 +4,8 @@
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
+  mxIgraphSetErrorHandler();
+
   if (nrhs != 2) {
     mexErrMsgIdAndTxt("Igraph:nmi:WrongNumberOfInputs",
                       "%s requires two inputs, the partitions to be compared.",

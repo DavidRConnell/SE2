@@ -11,6 +11,8 @@
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
+  mxIgraphSetErrorHandler();
+
   mwSize n_required_inputs = 2;
   mwSize n_optional_inputs = 1;
   igraph_vector_int_t x;

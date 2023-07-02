@@ -2,6 +2,8 @@
 #define MEX_IGRAPH_H
 
 #include "mex.h"
+#include "error.h"
+
 #include <igraph_vector.h>
 #include <igraph_datatype.h>
 

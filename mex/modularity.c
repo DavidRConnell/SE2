@@ -5,6 +5,8 @@
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
+  mxIgraphSetErrorHandler();
+
   igraph_t graph;
   igraph_bool_t directed;
   igraph_vector_t *weights;

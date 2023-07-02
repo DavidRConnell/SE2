@@ -5,6 +5,8 @@
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
+  mxIgraphSetErrorHandler();
+
   if (nrhs != 1) {
     mexErrMsgIdAndTxt("Igraph:WrongNumberOfInputs", "%s requires a file name.",
                       mexFunctionName());

@@ -8,6 +8,8 @@
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
+  mxIgraphSetErrorHandler();
+
   mwSize n_required_inputs = 1;
 
   if (nrhs < n_required_inputs) {
