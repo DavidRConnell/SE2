@@ -54,7 +54,6 @@ function [varargout]=SpeakEasy2(ADJ,varargin)
 %      Parameter            Value
 %        'memory_efficient'  'true' (default) whether to favor memory (true)
 %                            or performance (false). Specific to full ADJ.
-%                            (Ignored when using mex).
 %        'random_seed'       Seed to use for reproducing results.
 %        'autoshutdown'      'true' (default) whether to shutdown the parpool.
 %                            If not using parallel processing, ignored. Setting
@@ -121,20 +120,16 @@ else
     addOptional(options,'seed_set_by_user',1);
 end
 
-if options.Results.use_mex
-    make();
-end
-
-parallel_enabled = ~isempty(ver("parallel")) || options.Results.use_mex;
+parallel_enabled = ~isempty(ver("parallel"));
 if all(~contains(options.UsingDefaults, 'max_threads')) && ~parallel_enabled
     warning(sprintf("%s\n%s", ...
                     "Parallel toolbox required to take advantage of multiple threads.", ...
                     "Ignoring value of 'max_threads' argument."));
 end
 
-if options.Results.max_threads > feature('numcores')
-    error("Threads set to more than available in argument 'max_threads'.")
-end
+% if options.Results.max_threads > feature('numcores')
+%     error("Threads set to more than available in argument 'max_threads'.")
+% end
 
 parse(options,varargin{:});
 options=options.Results; %for convenience
@@ -151,9 +146,9 @@ if options.minclust<3
     error('you set minclust < 3 - this is logically odd and may cause problems, so please increase');         %min size for sub-clustering(if already small, dont need to subcluster)
 end
 
-if options.max_threads==1
-    error('set parallel equal to desired number of threads, not just 1, which indicates a single thread');
-end
+% if options.max_threads==1
+%     error('set parallel equal to desired number of threads, not just 1, which indicates a single thread');
+% end
 
 if options.multicommunity<1
     disp('Alert - you set the multicom option equal a value less than 1 - this will NOT enable overlapping community detection.')
@@ -265,9 +260,9 @@ end
 if nargout==0
     save([options.filename '.mat'], 'partition_tags', 'partition_cells', 'convenient_order')
 else
-    varargout{1}=partition_tags ;
-    varargout{2}=partition_cells ;
-    varargout{3}=convenient_order ;
+    varargout{1}=partition_tags{1}(:, 2);
+    varargout{2}=partition_cells;
+    varargout{3}=convenient_order;
 end
 
 if options.multicommunity>1
