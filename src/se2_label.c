@@ -185,21 +185,6 @@ void se2_burst_large_communities(igraph_t const *graph,
 
   n_new_tags = VECTOR(n_new_tags_cum)[partition->max_label + 1];
 
-  if ((n_new_tags + partition->n_labels) > partition->n_nodes) {
-    igraph_integer_t extra_tags = (n_new_tags + partition->n_labels) -
-                                  partition->n_nodes;
-    igraph_integer_t community;
-    igraph_vector_int_scale(&n_nodes_to_move, desired_community_size);
-    while (extra_tags > 0) {
-      community = igraph_vector_int_max(&n_nodes_to_move);
-      VECTOR(n_nodes_to_move)[community]--;
-      for (igraph_integer_t i = community; i < (partition->max_label + 2); i++) {
-        VECTOR(n_new_tags_cum)[i]--;
-      }
-      extra_tags--;
-    }
-  }
-
   igraph_vector_int_init(&new_tags, n_new_tags);
   for (igraph_integer_t i = 0; i < n_new_tags; i++) {
     VECTOR(new_tags)[i] = se2_partition_new_label(partition);

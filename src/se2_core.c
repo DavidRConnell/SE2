@@ -255,7 +255,5 @@ int speak_easy_2(igraph_t *graph, igraph_vector_t *weights,
   // pass;
   /* } */
 
-  igraph_reindex_membership(res, NULL, NULL);
-
   return IGRAPH_SUCCESS;
 }

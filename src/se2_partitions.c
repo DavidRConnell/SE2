@@ -39,8 +39,9 @@ se2_partition *se2_partition_init(igraph_t const *graph,
 {
   se2_partition *partition = malloc(sizeof(*partition));
   igraph_integer_t n_nodes = igraph_vcount(graph);
+  igraph_vector_int_t *reference = malloc(sizeof(*reference));
+  igraph_vector_int_t *stage = malloc(sizeof(*stage));
   igraph_vector_t *specificity = malloc(sizeof(*specificity));
-  igraph_vector_int_t *stage = malloc(sizeof(*specificity));
   igraph_vector_int_t *community_sizes = malloc(sizeof(*community_sizes));
   igraph_integer_t n_labels = 0;
 
@@ -49,17 +50,19 @@ se2_partition *se2_partition_init(igraph_t const *graph,
     printf("Membership vector size differs from number of vertices.");
   }
 
-  igraph_vector_init(specificity, n_nodes);
+  igraph_vector_int_init(reference, n_nodes);
   igraph_vector_int_init(stage, n_nodes);
+  igraph_vector_init(specificity, n_nodes);
   igraph_vector_int_init(community_sizes, 0);
 
+  igraph_vector_int_update(reference, initial_labels);
   igraph_vector_int_update(stage, initial_labels);
 
   n_labels = se2_count_labels(initial_labels, community_sizes);
 
   se2_partition new_partition = {
     .n_nodes = n_nodes,
-    .reference = initial_labels,
+    .reference = reference,
     .stage = stage,
     .label_quality = specificity,
     .community_sizes = community_sizes,
@@ -73,9 +76,11 @@ se2_partition *se2_partition_init(igraph_t const *graph,
 
 void se2_partition_destroy(se2_partition *partition)
 {
+  igraph_vector_int_destroy(partition->reference);
   igraph_vector_int_destroy(partition->stage);
   igraph_vector_destroy(partition->label_quality);
   igraph_vector_int_destroy(partition->community_sizes);
+  free(partition->reference);
   free(partition->stage);
   free(partition->label_quality);
   free(partition->community_sizes);
@@ -451,6 +456,28 @@ void se2_partition_commit_changes(se2_partition *partition)
   se2_partition_recount_community_sizes(partition);
 }
 
+void se2_reindex_membership(igraph_vector_int_t *membership)
+{
+  igraph_vector_int_t indices;
+  igraph_integer_t n_nodes = igraph_vector_int_size(membership);
+
+  igraph_vector_int_init(&indices, n_nodes);
+
+  igraph_vector_int_qsort_ind(membership, &indices, IGRAPH_ASCENDING);
+
+  igraph_integer_t c_old, c_new = -1, c_prev_node = -1;
+  for (igraph_integer_t i = 0; i < n_nodes; i++) {
+    c_old = VECTOR(*membership)[VECTOR(indices)[i]];
+    if (c_old != c_prev_node) {
+      c_new++;
+      c_prev_node = c_old;
+    }
+    VECTOR(*membership)[VECTOR(indices)[i]] = c_new;
+  }
+
+  igraph_vector_int_destroy(&indices);
+}
+
 /* Save the state of the current working partition's committed changes to the
 partition store.
 
@@ -464,4 +491,5 @@ void se2_partition_store(se2_partition const *working_partition,
   igraph_vector_int_t *partition_state = igraph_vector_int_list_get_ptr(
       partition_store, idx);
   igraph_vector_int_update(partition_state, working_partition->reference);
+  se2_reindex_membership(partition_state);
 }
