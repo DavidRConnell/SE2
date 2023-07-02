@@ -25,6 +25,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
   igraph_read_graph_gml(&graph, fptr);
 
+  fclose(fptr);
+
   plhs[0] = mxIgraphCreateSparseAdj(&graph, NULL);
   igraph_destroy(&graph);
 }
