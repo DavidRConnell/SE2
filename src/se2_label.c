@@ -87,6 +87,8 @@ static void se2_find_most_specific_labels_i(igraph_t const *graph,
   igraph_vector_init(&labels_expected, max_label + 1);
   igraph_vector_init(&labels_observed, max_label + 1);
 
+  partition->previous_n_nodes_moved = 0;
+
   global_label_proportions(graph, weights, partition, &labels_expected,
                            max_label + 1);
 
@@ -118,8 +120,15 @@ static void se2_find_most_specific_labels_i(igraph_t const *graph,
 void se2_find_most_specific_labels(igraph_t const *graph,
                                    igraph_vector_t const *weights,
                                    se2_partition *partition,
-                                   igraph_real_t const fraction_nodes_to_label)
+                                   igraph_real_t const fraction_nodes_to_label,
+                                   igraph_real_t const min_fraction_nodes_changed)
 {
+  if ((partition->previous_n_nodes_moved >= 0) &&
+      (partition->previous_n_nodes_moved <=
+       (fraction_nodes_to_label * min_fraction_nodes_changed))) {
+    return;
+  }
+
   se2_iterator *node_iter = se2_iterator_random_node_init(partition,
                             fraction_nodes_to_label);
   se2_find_most_specific_labels_i(graph, weights, partition, node_iter);

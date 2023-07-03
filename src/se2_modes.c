@@ -5,6 +5,7 @@
 #include "se2_label.h"
 
 #define TYPICAL_FRACTION_NODES_TO_UPDATE 0.9
+#define TYPICAL_MIN_CHANGED_NODES 0.0
 #define NURTURE_FRACTION_NODES_TO_UPDATE 0.9
 #define FRACTION_NODES_TO_BUBBLE 0.9
 #define POST_PEAK_BUBBLE_LIMIT 2
@@ -168,7 +169,8 @@ static void se2_typical_mode(igraph_t const *graph,
                              se2_partition *partition)
 {
   se2_find_most_specific_labels(graph, weights, partition,
-                                TYPICAL_FRACTION_NODES_TO_UPDATE);
+                                TYPICAL_FRACTION_NODES_TO_UPDATE,
+                                TYPICAL_MIN_CHANGED_NODES);
 }
 
 static void se2_bubble_mode(igraph_t const *graph,
@@ -222,6 +224,10 @@ void se2_mode_run_step(igraph_t const *graph,
   case SE2_NUM_MODES:
     // Never occurs.
     break;
+  }
+
+  if (tracker->mode != SE2_TYPICAL) {
+    partition->previous_n_nodes_moved = -1;
   }
 
   se2_post_step_hook(tracker);

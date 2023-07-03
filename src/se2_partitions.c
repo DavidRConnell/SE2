@@ -62,6 +62,7 @@ se2_partition *se2_partition_init(igraph_t const *graph,
 
   se2_partition new_partition = {
     .n_nodes = n_nodes,
+    .previous_n_nodes_moved = -1,
     .reference = reference,
     .stage = stage,
     .label_quality = specificity,
@@ -269,6 +270,8 @@ void se2_partition_add_to_stage(se2_partition *partition,
                                 igraph_integer_t const label,
                                 igraph_real_t specificity)
 {
+  partition->previous_n_nodes_moved +=
+    label != VECTOR(*partition->stage)[node_id];
   VECTOR(*partition->stage)[node_id] = label;
   VECTOR(*partition->label_quality)[node_id] = specificity;
 }

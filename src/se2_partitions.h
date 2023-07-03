@@ -20,6 +20,7 @@ typedef struct se2_partition {
   igraph_vector_int_t *reference;       // Fixed previous membership
   igraph_vector_t *label_quality;       // Label quality for stage.
   igraph_integer_t n_nodes;
+  igraph_integer_t previous_n_nodes_moved;
   igraph_integer_t n_labels;
   igraph_vector_int_t *community_sizes;
   igraph_integer_t max_label;
