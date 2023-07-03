@@ -2,6 +2,7 @@
 
 #include <igraph_interface.h>
 #include <igraph_community.h>
+#include <igraph_structural.h>
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
@@ -11,9 +12,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   igraph_bool_t directed;
   igraph_vector_t weights;
   igraph_vector_t *weights_ptr = NULL;
+  igraph_vector_t k;
   igraph_vector_int_t membership;
 
-  igraph_real_t resolution = 0.7;
+  igraph_real_t resolution = 1;
+  igraph_real_t edge_sum;
   igraph_real_t beta = 0.01;
   igraph_integer_t n_iterations = -1;
 
@@ -40,10 +43,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   if (mxIgraphIsWeighted(prhs[0])) {
     mxIgraphArrayToWeights(&weights, prhs[0], directed);
     weights_ptr = &weights;
+    edge_sum = igraph_vector_sum(&weights);
+  } else {
+    edge_sum = igraph_ecount(&graph);
   }
 
+  igraph_vector_init(&k, igraph_vcount(&graph));
+  igraph_strength(&graph, &k, igraph_vss_all(), IGRAPH_ALL, 1,
+                  weights_ptr);
+
   igraph_vector_int_init(&membership, 0);
-  igraph_community_leiden(&graph, weights_ptr, NULL, resolution, beta, false,
+
+  igraph_community_leiden(&graph, weights_ptr, &k,
+                          resolution / (2 * edge_sum), beta, false,
                           n_iterations, &membership, NULL, NULL);
 
   if (weights_ptr) {
