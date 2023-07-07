@@ -3,7 +3,12 @@ CC = gcc
 INCLUDE_DIR = ../include
 LIB_DIR = ../lib
 INSTALL_DIR = $(HOME)/.local/share
-CFLAGS = -Wall -Wextra -fPIC -I$(INSTALL_DIR)/igraph/include
+
+CFLAGS = -Wall -Wextra -fPIC
+CPPFLAGS = -I$(INCLUDE_DIR) -I$(INSTALL_DIR)/igraph/include
+LDFLAGS = -L$(INSTALL_DIR)/igraph/lib
+
+vpath %.h $(INCLUDE_DIR)
 
 # TODO: Change to if statements to detect OS
 LIB_EXT = so
@@ -23,40 +28,32 @@ libse2: $(LIB_DIR)/libse2.$(LIB_EXT)
 
 $(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o se2_modes.o
 $(LIB_DIR)/libse2.$(LIB_EXT): se2_partitions.o se2_label.o se2_reweight_graph.o
-	$(CC) -shared -o $@ $^ -fopenmp -L$(INSTALL_DIR)/igraph/lib -ligraph -lm
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -shared -fopenmp \
+		$^ -o $@ -ligraph -lm
 
 .PHONY: lib
 lib:
 	@[ -d $(LIB_DIR) ] || mkdir $(LIB_DIR)
 
 se2_core.o: se2_core.c se2_random.h se2_seeding.h se2_modes.h \
-	    se2_reweight_graph.h $(INCLUDE_DIR)/speak_easy_2.h
-	$(CC) $(CFLAGS) -c -fopenmp -I$(INCLUDE_DIR) $*.c
+	    se2_reweight_graph.h speak_easy_2.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -fopenmp $*.c
 
 se2_random.o: se2_random.c se2_random.h
-	$(CC) $(CFLAGS) -c $*.c
-
-se2_seeding.o: se2_seeding.c se2_seeding.h se2_random.h $(INCLUDE_DIR)/speak_easy_2.h
-	$(CC) $(CFLAGS) -c -I$(INCLUDE_DIR) $*.c
-
+se2_seeding.o: se2_seeding.c se2_seeding.h se2_random.h speak_easy_2.h
 se2_reweight_graph.o: se2_reweight_graph.c se2_reweight_graph.h
-	$(CC) $(CFLAGS) -c $*.c
-
 se2_modes.o: se2_modes.c se2_modes.h se2_label.h se2_partitions.h \
-	     $(INCLUDE_DIR)/speak_easy_2.h
-	$(CC) $(CFLAGS) -c -I$(INCLUDE_DIR) $*.c
-
+	     speak_easy_2.h
 se2_label.o: se2_label.c se2_label.h se2_partitions.h
-	$(CC) $(CFLAGS) -c $*.c
-
 se2_partitions.o: se2_partitions.c se2_partitions.h se2_random.h
-	$(CC) $(CFLAGS) -c $*.c
+%.o:
+	gcc $(CPPFLAGS) $(CFLAGS) -c $*.c
 
 .PHONY: debug
 debug: libse2
 
 .PHONY: install
-install: $(LIB_DIR)/libse2.$(LIB_EXT)
+install: libse2
 	@[ -d $(INSTALL_DIR)/SE2 ] || mkdir -p $(INSTALL_DIR)/SE2/lib && \
 		mkdir -p $(INCLUDE_DIR)/SE2/include
 	-mv $^ $(INSTALL_DIR)/SE2/lib
