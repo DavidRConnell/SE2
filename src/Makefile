@@ -8,10 +8,11 @@ CFLAGS = -Wall -Wextra -fPIC
 CPPFLAGS = -I$(INCLUDE_DIR) -I$(INSTALL_DIR)/igraph/include
 LDFLAGS = -L$(INSTALL_DIR)/igraph/lib
 
-vpath %.h $(INCLUDE_DIR)
-
 # TODO: Change to if statements to detect OS
 LIB_EXT = so
+
+vpath %.h $(INCLUDE_DIR)
+vpath %.$(LIB_EXT) $(LIB_DIR) $(INSTALL_DIR)/igraph/lib
 
 ifdef SE2_PRINT_PATH
 CFLAGS += -DSE2_PRINT_PATH=$(SE2_PRINT_PATH)
@@ -21,13 +22,17 @@ endif
 all: libse2
 
 .PHONY: libse2
+libse2: CFLAGS += -fopenmp
 libse2: lib
 libse2: $(LIB_DIR)/libse2.$(LIB_EXT)
 
-$(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o se2_modes.o
+$(LIB_DIR)/libse2.$(LIB_EXT): LDFLAGS += -lm
+$(LIB_DIR)/libse2.$(LIB_EXT): -ligraph
 $(LIB_DIR)/libse2.$(LIB_EXT): se2_partitions.o se2_label.o se2_reweight_graph.o
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -shared -fopenmp \
-		$^ -o $@ -ligraph -lm
+$(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o se2_modes.o
+
+%.so:
+	$(LINK.c) -shared $^ $(LOADLIBES) -o $@
 
 .PHONY: lib
 lib:
@@ -42,8 +47,6 @@ se2_reweight_graph.o: se2_reweight_graph.h
 se2_modes.o: se2_modes.h se2_label.h se2_partitions.h speak_easy_2.h
 se2_label.o: se2_label.h se2_partitions.h
 se2_partitions.o: se2_partitions.h se2_random.h
-%.o: %.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $*.c
 
 .PHONY: debug
 debug: CFLAGS += -g3 -O0
