@@ -17,12 +17,16 @@ endif
 .PHONY: all libse2 clean install
 
 all: libse2
+libse2: lib
 libse2: $(LIB_DIR)/libse2.$(LIB_EXT)
 
-$(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o se2_modes.o \
-			      se2_partitions.o se2_label.o se2_reweight_graph.o
-	@[ -d $(LIB_DIR) ] || mkdir $(LIB_DIR)
+$(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o se2_modes.o
+$(LIB_DIR)/libse2.$(LIB_EXT): se2_partitions.o se2_label.o se2_reweight_graph.o
 	$(CC) -shared -o $@ $^ -fopenmp -L$(INSTALL_DIR)/igraph/lib -ligraph -lm
+
+.PHONY: lib
+lib:
+	@[ -d $(LIB_DIR) ] || mkdir $(LIB_DIR)
 
 se2_core.o: se2_core.c se2_random.h se2_seeding.h se2_modes.h \
 	    se2_reweight_graph.h $(INCLUDE_DIR)/speak_easy_2.h
