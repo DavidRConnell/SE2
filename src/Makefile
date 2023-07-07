@@ -14,9 +14,10 @@ ifdef SE2_PRINT_PATH
 CFLAGS += -DSE2_PRINT_PATH=$(SE2_PRINT_PATH)
 endif
 
-.PHONY: all libse2 clean install
-
+.PHONY: all
 all: libse2
+
+.PHONY: libse2
 libse2: lib
 libse2: $(LIB_DIR)/libse2.$(LIB_EXT)
 
@@ -51,14 +52,17 @@ se2_label.o: se2_label.c se2_label.h se2_partitions.h
 se2_partitions.o: se2_partitions.c se2_partitions.h se2_random.h
 	$(CC) $(CFLAGS) -c $*.c
 
+.PHONY: debug
 debug: libse2
 
+.PHONY: install
 install: $(LIB_DIR)/libse2.$(LIB_EXT)
 	@[ -d $(INSTALL_DIR)/SE2 ] || mkdir -p $(INSTALL_DIR)/SE2/lib && \
 		mkdir -p $(INCLUDE_DIR)/SE2/include
 	-mv $^ $(INSTALL_DIR)/SE2/lib
 	-cp $(INCLUDE_DIR)/* $(INSTALL_DIR)/SE2/lib
 
+.PHONY: clean
 clean:
 	-rm *.o
 	-rm -r $(LIB_DIR)
