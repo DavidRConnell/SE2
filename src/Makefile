@@ -13,8 +13,6 @@ vpath %.h $(INCLUDE_DIR)
 # TODO: Change to if statements to detect OS
 LIB_EXT = so
 
-debug: CFLAGS += -g3 -O0
-
 ifdef SE2_PRINT_PATH
 CFLAGS += -DSE2_PRINT_PATH=$(SE2_PRINT_PATH)
 endif
@@ -35,10 +33,9 @@ $(LIB_DIR)/libse2.$(LIB_EXT): se2_partitions.o se2_label.o se2_reweight_graph.o
 lib:
 	@[ -d $(LIB_DIR) ] || mkdir $(LIB_DIR)
 
+se2_core.o: CFLAGS += -fopenmp
 se2_core.o: se2_random.h se2_seeding.h se2_modes.h se2_reweight_graph.h \
 	speak_easy_2.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c -fopenmp $*.c
-
 se2_random.o: se2_random.h
 se2_seeding.o: se2_seeding.h se2_random.h speak_easy_2.h
 se2_reweight_graph.o: se2_reweight_graph.h
@@ -49,6 +46,7 @@ se2_partitions.o: se2_partitions.h se2_random.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $*.c
 
 .PHONY: debug
+debug: CFLAGS += -g3 -O0
 debug: libse2
 
 .PHONY: install
