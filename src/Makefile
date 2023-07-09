@@ -56,7 +56,7 @@ debug: libse2
 install: libse2
 	@[ -d $(INSTALL_DIR)/SE2 ] || mkdir -p $(INSTALL_DIR)/SE2/lib && \
 		mkdir -p $(INCLUDE_DIR)/SE2/include
-	-mv $^ $(INSTALL_DIR)/SE2/lib
+	-mv $(LIB_DIR)/libse2.$(LIB_EXT) $(INSTALL_DIR)/SE2/lib
 	-cp $(INCLUDE_DIR)/* $(INSTALL_DIR)/SE2/lib
 
 .PHONY: clean
