@@ -7,12 +7,12 @@
 
 int main()
 {
-  char *graph_name = "karate.gml";
+  char *graph_name = "mediumgraph.txt";
   char graph_path[1000] = "../examples/";
   igraph_t graph;
   options opts = {
     .random_seed = 2,
-    .independent_runs = 10,
+    .independent_runs = 2,
   };
   igraph_vector_int_t res;
   igraph_vector_int_init(&res, 1);
@@ -20,7 +20,7 @@ int main()
   strncat(graph_path, graph_name, 999);
   FILE *fptr = fopen(graph_path, "r");
 
-  igraph_read_graph_gml(&graph, fptr);
+  igraph_read_graph_edgelist(&graph, fptr, 2000, IGRAPH_UNDIRECTED);
 
   speak_easy_2(&graph, NULL, &opts, &res);
 

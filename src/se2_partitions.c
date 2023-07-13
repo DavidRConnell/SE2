@@ -6,14 +6,6 @@
 
 #define MAX(a, b) (a) > (b) ? (a) : (b)
 
-struct se2_iterator {
-  igraph_vector_int_t *ids;
-  igraph_integer_t pos;
-  igraph_integer_t n_total;
-  igraph_integer_t n_iter;
-  igraph_bool_t owns_ids;
-};
-
 static igraph_integer_t se2_count_labels(igraph_vector_int_t *membership,
     igraph_vector_int_t *community_sizes)
 {

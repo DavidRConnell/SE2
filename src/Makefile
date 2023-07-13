@@ -4,7 +4,7 @@ INCLUDE_DIR = ../include
 LIB_DIR = ../lib
 INSTALL_DIR = $(HOME)/.local/share
 
-CFLAGS = -Wall -Wextra -fPIC
+CFLAGS = -Wall -Wextra -fPIC -fopenmp
 CPPFLAGS = -I$(INCLUDE_DIR) -I$(INSTALL_DIR)/igraph/include
 LDFLAGS = -L$(INSTALL_DIR)/igraph/lib
 
@@ -22,7 +22,6 @@ endif
 all: libse2
 
 .PHONY: libse2
-libse2: CFLAGS += -fopenmp
 libse2: lib
 libse2: $(LIB_DIR)/libse2.$(LIB_EXT)
 
@@ -38,7 +37,6 @@ $(LIB_DIR)/libse2.$(LIB_EXT): se2_core.o se2_random.o se2_seeding.o se2_modes.o
 lib:
 	@[ -d $(LIB_DIR) ] || mkdir $(LIB_DIR)
 
-se2_core.o: CFLAGS += -fopenmp
 se2_core.o: se2_random.h se2_seeding.h se2_modes.h se2_reweight_graph.h \
 	speak_easy_2.h
 se2_random.o: se2_random.h

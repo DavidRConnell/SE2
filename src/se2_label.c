@@ -77,27 +77,29 @@ static void se2_find_most_specific_labels_i(igraph_t const *graph,
     se2_iterator *node_iter)
 {
   igraph_integer_t max_label = se2_partition_max_label(partition);
-  igraph_vector_t labels_expected;
-  igraph_vector_t labels_observed;
   se2_iterator *label_iter = se2_iterator_random_label_init(partition, false);
+  igraph_vector_t labels_expected;
   igraph_real_t node_kin = 0;
   igraph_real_t label_specificity = 0, best_label_specificity = 0;
   igraph_integer_t best_label = -1;
 
-  igraph_vector_init(&labels_expected, max_label + 1);
-  igraph_vector_init(&labels_observed, max_label + 1);
-
   partition->previous_n_nodes_moved = 0;
 
+  igraph_vector_init(&labels_expected, max_label + 1);
   global_label_proportions(graph, weights, partition, &labels_expected,
                            max_label + 1);
 
   igraph_integer_t node_id = 0, label_id = 0;
-  while ((node_id = se2_iterator_next(node_iter)) != -1) {
-    igraph_vector_null(&labels_observed);
+  #pragma omp parallel for
+  for (igraph_integer_t i = 0; i < node_iter->n_iter; i++) {
+    igraph_vector_t labels_observed;
+    igraph_vector_init(&labels_observed, max_label + 1);
+
+    node_id = VECTOR(*node_iter->ids)[i];
     local_label_proportions(graph, weights, partition, node_id,
                             &labels_observed, &node_kin, max_label + 1);
-    while ((label_id = se2_iterator_next(label_iter)) != -1) {
+    for (igraph_integer_t j = 0; j < label_iter->n_iter; j++) {
+      label_id = VECTOR(*label_iter->ids)[j];
       label_specificity = VECTOR(labels_observed)[label_id] -
                           (node_kin * VECTOR(labels_expected)[label_id]);
       if ((best_label == -1) || (label_specificity >= best_label_specificity)) {
@@ -109,12 +111,12 @@ static void se2_find_most_specific_labels_i(igraph_t const *graph,
                                best_label_specificity);
     best_label = -1;
     se2_iterator_shuffle(label_iter);
+    igraph_vector_destroy(&labels_observed);
   }
   se2_partition_commit_changes(partition);
 
   se2_iterator_destroy(label_iter);
   igraph_vector_destroy(&labels_expected);
-  igraph_vector_destroy(&labels_observed);
 }
 
 void se2_find_most_specific_labels(igraph_t const *graph,

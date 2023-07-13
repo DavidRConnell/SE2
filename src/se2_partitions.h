@@ -26,6 +26,14 @@ typedef struct se2_partition {
   igraph_integer_t max_label;
 } se2_partition;
 
+struct se2_iterator {
+  igraph_vector_int_t *ids;
+  igraph_integer_t pos;
+  igraph_integer_t n_total;
+  igraph_integer_t n_iter;
+  igraph_bool_t owns_ids;
+};
+
 typedef struct se2_iterator se2_iterator;
 
 se2_partition *se2_partition_init(igraph_t const *graph,
